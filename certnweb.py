@@ -1,19 +1,136 @@
 import streamlit as st
 import math
 
-# Configuração da Página (Título e ícone)
+# ==============================================================================
+# CONFIGURAÇÃO VISUAL E CSS (UI DESIGN)
+# ==============================================================================
 st.set_page_config(
-    page_title="Calculadora ITBI/IPTU Sarzedo 2025",
-    page_icon="🏙️",
+    page_title="Tributos Sarzedo 2025",
+    page_icon="🏛️",
     layout="centered"
 )
 
+# CSS para melhorar o visual (Espaçamento e Fontes)
+st.markdown("""
+    <style>
+    .main {
+        background-color: #f8f9fa;
+    }
+    .stButton>button {
+        width: 100%;
+        border-radius: 8px;
+        height: 3em;
+        font-weight: bold;
+    }
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 1.4rem;
+        color: #2e7bcf;
+    }
+    .result-card {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border: 1px solid #e0e0e0;
+        margin-top: 20px;
+    }
+    .extenso {
+        font-style: italic;
+        color: #555;
+        font-size: 0.95rem;
+        margin-top: 5px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # ==============================================================================
-# DADOS (Copiados do PDF)
+# FUNÇÕES AUXILIARES (Extenso e Formatação)
 # ==============================================================================
 
+def formatar_moeda(valor):
+    s = "{:,.2f}".format(valor)
+    return f"R$ {s.replace(',', '_').replace('.', ',').replace('_', '.')}"
+
+def numero_por_extenso(n):
+    """Converte número para extenso (Padrão Monetário Brasileiro) - Sem dependências"""
+    if n == 0: return "zero reais"
+    
+    unidades = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"]
+    dezespeciais = ["dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"]
+    dezenas = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"]
+    centenas = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"]
+
+    def convert_group(num):
+        if num == 100: return "cem"
+        s = ""
+        c, d, u = (num // 100), (num % 100 // 10), (num % 10)
+        
+        if c > 0:
+            s += centenas[c]
+            if d > 0 or u > 0: s += " e "
+        
+        if d == 1:
+            s += dezespeciais[u]
+        elif d > 1:
+            s += dezenas[d]
+            if u > 0: s += " e " + unidades[u]
+        elif u > 0:
+            if c == 0: s += unidades[u] # Evita "cento e zero" ou coisa assim
+            else: s += unidades[u] # Caso normal (ex: 105 -> cento e cinco)
+        return s
+
+    inteiro = int(n)
+    centavos = int(round((n - inteiro) * 100))
+    parts = []
+    
+    # Bilhões
+    bilhao = (inteiro // 1000000000) % 1000
+    if bilhao > 0:
+        term = "bilhão" if bilhao == 1 else "bilhões"
+        parts.append(f"{convert_group(bilhao)} {term}")
+    
+    # Milhões
+    milhao = (inteiro // 1000000) % 1000
+    if milhao > 0:
+        term = "milhão" if milhao == 1 else "milhões"
+        parts.append(f"{convert_group(milhao)} {term}")
+    
+    # Milhares
+    mil = (inteiro // 1000) % 1000
+    if mil > 0:
+        term = "mil" # Invariável
+        if mil == 1: parts.append(term)
+        else: parts.append(f"{convert_group(mil)} {term}")
+    
+    # Unidades
+    resto = inteiro % 1000
+    if resto > 0:
+        conector = " e " if parts else ""
+        # Regra do "e": se for múltiplo de 100 ou menor que 100
+        parts.append(f"{convert_group(resto)}")
+    
+    # Montagem Reais
+    texto_reais = ", ".join(parts).replace(", ", " e " if len(parts)==2 else ", ", 1)
+    if not texto_reais: texto_reais = "zero"
+    texto_reais += " real" if inteiro == 1 else " reais"
+    
+    # Montagem Centavos
+    texto_centavos = ""
+    if centavos > 0:
+        texto_centavos = f" e {convert_group(centavos)}"
+        texto_centavos += " centavo" if centavos == 1 else " centavos"
+        
+    return (texto_reais + texto_centavos).upper()
+
+# ==============================================================================
+# DADOS (Simplificados para leitura)
+# ==============================================================================
+# ... (Mantendo os mesmos dicionários para não ocupar espaço, mas eles estão aqui na lógica)
 VALORES_EDIFICACAO = {
-    "--- PADRÃO BAIXO / POPULAR ---": 0,
     "R-1 (Unifamiliar) - Baixo - Novo": 2369.59,
     "R-1 (Unifamiliar) - Baixo - Bom (4-8 anos)": 1895.67,
     "R-1 (Unifamiliar) - Baixo - Regular (9-20 anos)": 1516.54,
@@ -30,7 +147,6 @@ VALORES_EDIFICACAO = {
     "PIS (Interesse Social) - Bom": 1311.12,
     "PIS (Interesse Social) - Regular": 1048.90,
     "PIS (Interesse Social) - Precário": 839.12,
-    "--- PADRÃO NORMAL ---": 0,
     "R-1 (Unifamiliar) - Normal - Novo": 2835.15,
     "R-1 (Unifamiliar) - Normal - Bom": 2268.12,
     "R-1 (Unifamiliar) - Normal - Regular": 1814.50,
@@ -43,7 +159,6 @@ VALORES_EDIFICACAO = {
     "R-8 ou mais (Multifamiliar) - Normal - Bom": 2052.12,
     "R-8 ou mais (Multifamiliar) - Normal - Regular": 1641.70,
     "R-8 ou mais (Multifamiliar) - Normal - Precário": 1313.36,
-    "--- PADRÃO ALTO ---": 0,
     "R-1 (Unifamiliar) - Alto - Novo": 3530.93,
     "R-1 (Unifamiliar) - Alto - Bom": 2824.74,
     "R-1 (Unifamiliar) - Alto - Regular": 2259.80,
@@ -52,7 +167,6 @@ VALORES_EDIFICACAO = {
     "R-3 ou mais (Multifamiliar) - Alto - Bom": 2303.15,
     "R-3 ou mais (Multifamiliar) - Alto - Regular": 1842.52,
     "R-3 ou mais (Multifamiliar) - Alto - Precário": 1474.02,
-    "--- COMERCIAL (SALAS E LOJAS) ---": 0,
     "CSL-1 (1 Pav) - Normal - Novo": 1846.54,
     "CSL-1 (1 Pav) - Normal - Bom": 1477.23,
     "CSL-1 (1 Pav) - Normal - Regular": 1181.79,
@@ -77,7 +191,6 @@ VALORES_EDIFICACAO = {
     "CSL-4 (4+ Pav) - Alto - Bom": 2720.62,
     "CSL-4 (4+ Pav) - Alto - Regular": 2176.49,
     "CSL-4 (4+ Pav) - Alto - Precário": 1741.19,
-    "--- INDÚSTRIA / GALPÃO (GI) ---": 0,
     "GI-1 (Padrão Baixo) - Novo": 1246.66,
     "GI-1 (Padrão Baixo) - Bom": 997.33,
     "GI-1 (Padrão Baixo) - Regular": 797.86,
@@ -202,107 +315,118 @@ VALORES_BAIRRO = {
     "Quintas da Jangada (Frente MG-040 - Q 01, 02, 07, 10 a 12)": 1000.00,
 }
 
-def formatar_moeda(valor):
-    s = "{:,.2f}".format(valor)
-    return f"R$ {s.replace(',', '_').replace('.', ',').replace('_', '.')}"
-
 # ==============================================================================
-# INTERFACE
+# INTERFACE PRINCIPAL
 # ==============================================================================
 
-st.title("🏙️ Sistema de Cálculo Tributário - Sarzedo 2025")
-st.markdown("### Decreto Municipal N° 1.849/2025")
+st.title("🏙️ Sistema Tributário Sarzedo 2025")
+st.markdown("**Decreto Municipal N° 1.849/2025**")
 
-# --- SEÇÃO 1: TERRENO ---
-st.divider()
-st.header("1. Dados do Terreno")
-col1, col2 = st.columns(2)
+# Uso de Abas para limpar a interface (UI Melhorada)
+tab1, tab2 = st.tabs([" Passo 1: Imóveis", " Passo 2: Resultado"])
 
-with col1:
-    bairros_lista = sorted(VALORES_BAIRRO.keys())
-    bairro_selecionado = st.selectbox("Selecione o Bairro / Região:", bairros_lista)
-    valor_m2_terreno = VALORES_BAIRRO[bairro_selecionado]
-    st.info(f"Valor Planta: {formatar_moeda(valor_m2_terreno)} / m²")
-
-with col2:
-    area_lote = st.number_input("Área do Lote (m²):", min_value=0.0, format="%.2f")
-    fracao_ideal = st.number_input("Fração Ideal (1.0 = 100%):", min_value=0.0, value=1.0, format="%.4f")
-
-# --- SEÇÃO 2: EDIFICAÇÕES ---
-st.divider()
-st.header("2. Edificações")
-
-# Controle de sessão para quantidade de edificações
-if 'qtd_imoveis' not in st.session_state:
-    st.session_state.qtd_imoveis = 1
-
-col_btn1, col_btn2 = st.columns([1, 4])
-if col_btn1.button("➕ Adicionar"):
-    st.session_state.qtd_imoveis += 1
-if col_btn2.button("➖ Remover"):
-    if st.session_state.qtd_imoveis > 1:
-        st.session_state.qtd_imoveis -= 1
-
-# Listas para guardar os dados inputados
-areas_construidas = []
-tipos_construidos = []
-
-# Opções de construção (filtrando os títulos)
-opcoes_construcao = [k for k in VALORES_EDIFICACAO.keys() if VALORES_EDIFICACAO[k] > 0 or "SEM CONSTRUÇÃO" in k]
-
-for i in range(st.session_state.qtd_imoveis):
-    st.markdown(f"**Edificação {i+1}**")
-    c1, c2 = st.columns([1, 3])
-    with c1:
-        a = st.number_input(f"Área (m²) - Edif. {i+1}", min_value=0.0, format="%.2f", key=f"area_{i}")
-    with c2:
-        t = st.selectbox(f"Tipo - Edif. {i+1}", options=opcoes_construcao, key=f"tipo_{i}")
-    
-    areas_construidas.append(a)
-    tipos_construidos.append(t)
-    st.markdown("---")
-
-# --- BOTÃO CALCULAR ---
-if st.button("🖩 CALCULAR VALOR VENAL", type="primary", use_container_width=True):
-    
-    # Cálculos
-    valor_total_terreno = area_lote * fracao_ideal * valor_m2_terreno
-    
-    total_construcao = 0
-    detalhes_constr = []
-    
-    for area, tipo in zip(areas_construidas, tipos_construidos):
-        if area > 0:
-            val_m2 = VALORES_EDIFICACAO[tipo]
-            val_total_item = area * val_m2
-            total_construcao += val_total_item
-            detalhes_constr.append((tipo, area, val_m2, val_total_item))
-            
-    valor_final = valor_total_terreno + total_construcao
-    
-    # Exibição do Resultado
-    st.success("Cálculo Realizado com Sucesso!")
-    
-    st.markdown("### 📋 Memória de Cálculo")
-    
-    col_res1, col_res2 = st.columns(2)
-    
-    with col_res1:
-        st.markdown("#### Terreno")
-        st.write(f"**Bairro:** {bairro_selecionado}")
-        st.write(f"**Área Efetiva:** {area_lote * fracao_ideal:.2f} m²")
-        st.metric(label="Valor Venal do Terreno", value=formatar_moeda(valor_total_terreno))
+with tab1:
+    # --- CARD TERRENO ---
+    with st.container(border=True):
+        st.subheader("🏡 Dados do Terreno")
         
-    with col_res2:
-        st.markdown("#### Construções")
-        st.write(f"**Qtd Edificações:** {len(detalhes_constr)}")
-        st.metric(label="Valor Venal das Construções", value=formatar_moeda(total_construcao))
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            bairros_lista = sorted(VALORES_BAIRRO.keys())
+            bairro_selecionado = st.selectbox("📍 Bairro / Região:", bairros_lista, help="Selecione conforme o Anexo I")
+            valor_m2_terreno = VALORES_BAIRRO[bairro_selecionado]
+            st.caption(f"Valor Base: **{formatar_moeda(valor_m2_terreno)} / m²**")
+        
+        with col2:
+            area_lote = st.number_input("📐 Área do Lote (m²):", min_value=0.0, format="%.2f", value=0.0)
+            fracao_ideal = st.number_input("🍰 Fração Ideal:", min_value=0.0, value=1.0, format="%.4f", help="1.0 para lote inteiro, 0.5 para metade, etc.")
 
-    # Detalhamento das construções (se houver)
-    if detalhes_constr:
-        with st.expander("Ver detalhes das edificações"):
-            for d in detalhes_constr:
-                st.write(f"• **{d[0]}**: {d[1]}m² x {formatar_moeda(d[2])} = **{formatar_moeda(d[3])}**")
+    st.write("") # Espaçamento
 
-    st.divider()
-    st.markdown(f"<h2 style='text-align: center; color: #2e7bcf;'>VALOR TOTAL: {formatar_moeda(valor_final)}</h2>", unsafe_allow_html=True)
+    # --- CARD CONSTRUÇÃO ---
+    with st.container(border=True):
+        st.subheader("🏗️ Dados da Construção")
+        
+        # Estado da aplicação para itens
+        if 'imoveis' not in st.session_state:
+            st.session_state.imoveis = []
+
+        # Botões de controle
+        c_btn1, c_btn2, c_space = st.columns([1, 1, 3])
+        if c_btn1.button("➕ Adicionar"):
+            st.session_state.imoveis.append({"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]})
+        
+        if c_btn2.button("🧹 Limpar Lista"):
+            st.session_state.imoveis = []
+
+        # Renderização dinâmica dos campos com "respiro"
+        opcoes_construcao = [k for k in VALORES_EDIFICACAO.keys() if VALORES_EDIFICACAO[k] > 0 or "SEM CONSTRUÇÃO" in k]
+        
+        if not st.session_state.imoveis:
+            st.info("Nenhuma construção adicionada. Clique em '➕ Adicionar' se houver edificação.")
+        
+        for i, item in enumerate(st.session_state.imoveis):
+            st.markdown(f"**Edificação #{i+1}**")
+            c_input1, c_input2 = st.columns([1, 2])
+            
+            # Atualiza os valores direto na sessão
+            new_area = c_input1.number_input(f"Área (m²)", min_value=0.0, format="%.2f", key=f"area_{i}", value=item['area'])
+            new_tipo = c_input2.selectbox(f"Padrão Construtivo", options=opcoes_construcao, key=f"tipo_{i}", index=opcoes_construcao.index(item['tipo']) if item['tipo'] in opcoes_construcao else 0)
+            
+            st.session_state.imoveis[i]['area'] = new_area
+            st.session_state.imoveis[i]['tipo'] = new_tipo
+            st.divider()
+
+    st.write("")
+    
+    # Botão de Ação Principal
+    if st.button("CALCULAR TRIBUTO 🚀", type="primary"):
+        st.session_state.calcular = True
+        # Força pular para a aba de resultado (gambiarra visual, mas o usuário clica na aba manual se precisar)
+        st.toast("Cálculo realizado! Veja a aba 'Resultado'.")
+
+with tab2:
+    if st.session_state.get('calcular'):
+        # CÁLCULOS
+        val_terreno_total = area_lote * fracao_ideal * valor_m2_terreno
+        
+        val_construcao_total = 0
+        detalhes = []
+        
+        for item in st.session_state.imoveis:
+            if item['area'] > 0:
+                v_m2 = VALORES_EDIFICACAO[item['tipo']]
+                v_total = item['area'] * v_m2
+                val_construcao_total += v_total
+                detalhes.append((item['tipo'], item['area'], v_m2, v_total))
+        
+        valor_final = val_terreno_total + val_construcao_total
+        
+        # APRESENTAÇÃO (Visual Card)
+        st.markdown(f"""
+        <div class="result-card">
+            <h3 style="text-align: center; color: #444;">CERTIDÃO DE LANÇAMENTO</h3>
+            <hr>
+            <h4 style="color: #2e7bcf;">1. TERRENO</h4>
+            <p><strong>Bairro:</strong> {bairro_selecionado}<br>
+            <strong>Área Tributável:</strong> {area_lote * fracao_ideal:.2f} m²<br>
+            <strong>Valor Venal:</strong> {formatar_moeda(val_terreno_total)}</p>
+            
+            <h4 style="color: #2e7bcf;">2. CONSTRUÇÕES</h4>
+            <p><strong>Total Construído:</strong> {sum(d[1] for d in detalhes):.2f} m²<br>
+            <strong>Valor Venal:</strong> {formatar_moeda(val_construcao_total)}</p>
+            
+            <hr>
+            <h2 style="text-align: center; color: #2e7bcf;">TOTAL: {formatar_moeda(valor_final)}</h2>
+            <p style="text-align: center; font-style: italic; color: #666;">({numero_por_extenso(valor_final)})</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Detalhes técnicos (Expander para não poluir)
+        with st.expander("🔎 Ver Memória de Cálculo Detalhada"):
+            st.write("--- Detalhamento das Edificações ---")
+            for d in detalhes:
+                st.write(f"- {d[0]}: {d[1]}m² x {formatar_moeda(d[2])} = **{formatar_moeda(d[3])}**")
+    else:
+        st.info("Preencha os dados na aba 'Passo 1' e clique em Calcular.")
