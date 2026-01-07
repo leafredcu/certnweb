@@ -2,79 +2,94 @@ import streamlit as st
 import math
 
 # ==============================================================================
-# CONFIGURAÇÃO E ESTILO (DESIGN SYSTEM)
+# CONFIGURAÇÃO E ESTILO (DESIGN LIQUID GLASS)
 # ==============================================================================
 st.set_page_config(
-    page_title="Tributos Sarzedo 2025",
-    page_icon="",
-    layout="wide"  # Layout amplo para usar a tela toda
+    page_title="Cálculo Valor Venal 2025",
+    page_icon="💎",
+    layout="wide"
 )
 
-# CSS PROFISSIONAL (Estilo Apple/Clean)
+# CSS AVANÇADO - AESTHETIC LIQUID GLASS
 st.markdown("""
     <style>
-    /* Fonte do sistema (San Francisco/Segoe UI) */
-    html, body, [class*="css"] {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* 1. FUNDO GRADIENTE ANIMADO (Base do Liquid Glass) */
+    .stApp {
+        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+        background-size: 400% 400%;
+        animation: gradient 15s ease infinite;
     }
     
-    /* Remove as setas (+/-) dos inputs de número */
+    @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* 2. REMOÇÃO AGRESSIVA DOS BOTÕES +/- (SPINNERS) */
     input[type=number]::-webkit-inner-spin-button, 
     input[type=number]::-webkit-outer-spin-button { 
         -webkit-appearance: none; 
-        margin: 0; 
+        margin: 0 !important; 
     }
     input[type=number] {
-        -moz-appearance: textfield;
+        -moz-appearance: textfield !important;
+        appearance: textfield !important;
     }
 
-    /* Estilo dos Cards */
-    .st-emotion-cache-1r6slb0 {
-        border-radius: 12px;
-        border: 1px solid #e0e0e0;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        padding: 20px;
-        background-color: white;
-    }
-
-    /* Títulos mais limpos */
-    h1, h2, h3 {
-        font-weight: 600;
-        letter-spacing: -0.5px;
-    }
-    
-    /* Destaque do Resultado */
-    .receipt-container {
-        background-color: #f9f9f9;
-        border: 1px solid #ddd;
-        border-radius: 12px;
+    /* 3. CARTÕES DE VIDRO (GLASSMORPHISM) */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.25);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
         padding: 25px;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-    }
-    
-    .total-value {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #0071e3; /* Azul Apple */
-        text-align: center;
-        margin-top: 10px;
-    }
-    
-    .extenso-text {
-        color: #86868b;
-        text-align: center;
-        font-style: italic;
-        font-size: 0.9rem;
         margin-bottom: 20px;
+        color: #1a1a1a;
+    }
+
+    /* 4. RESULTADO EM DESTAQUE */
+    .result-glass {
+        background: rgba(255, 255, 255, 0.85); /* Mais opaco para leitura */
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(12px);
+        border-radius: 15px;
+        padding: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        text-align: center;
+    }
+
+    /* Ajuste de tipografia para fundo colorido */
+    h1, h2, h3, h4, p, label, .stMarkdown {
+        color: #0d1b2a !important; /* Azul escuro quase preto para contraste */
+        text-shadow: 0px 0px 2px rgba(255,255,255,0.5);
+    }
+    
+    /* Inputs translúcidos */
+    .stSelectbox > div > div, .stNumberInput > div > div {
+        background-color: rgba(255, 255, 255, 0.6) !important;
+        border: none !important;
+        border-radius: 10px !important;
+    }
+    
+    /* Valor Total Gigante */
+    .total-big {
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: -webkit-linear-gradient(#1c4fd6, #14368a);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-top: 10px;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# LÓGICA E DADOS
+# LÓGICA E DADOS (Mantidos e Otimizados)
 # ==============================================================================
 
-# Funções Auxiliares
 def formatar_moeda(valor):
     s = "{:,.2f}".format(valor)
     return f"R$ {s.replace(',', '_').replace('.', ',').replace('_', '.')}"
@@ -106,15 +121,12 @@ def numero_por_extenso(n):
     
     bilhao = (inteiro // 1000000000) % 1000
     if bilhao > 0: parts.append(f"{convert_group(bilhao)} {'bilhão' if bilhao == 1 else 'bilhões'}")
-    
     milhao = (inteiro // 1000000) % 1000
     if milhao > 0: parts.append(f"{convert_group(milhao)} {'milhão' if milhao == 1 else 'milhões'}")
-    
     mil = (inteiro // 1000) % 1000
     if mil > 0:
         if mil == 1: parts.append("mil")
         else: parts.append(f"{convert_group(mil)} mil")
-    
     resto = inteiro % 1000
     if resto > 0: parts.append(f"{convert_group(resto)}")
     
@@ -129,7 +141,7 @@ def numero_por_extenso(n):
         
     return (texto_reais + texto_centavos).upper()
 
-# Dados (Mantidos os originais)
+# DADOS (Resumidos para caber, mas completos na lógica)
 VALORES_EDIFICACAO = {
     "R-1 (Unifamiliar) - Baixo - Novo": 2369.59,
     "R-1 (Unifamiliar) - Baixo - Bom (4-8 anos)": 1895.67,
@@ -319,85 +331,80 @@ VALORES_BAIRRO = {
 # INTERFACE PRINCIPAL
 # ==============================================================================
 
-# Cabeçalho Limpo
-st.markdown("## 🏛️ Sistema Tributário Sarzedo 2025")
-st.markdown("---")
+# Cabeçalho Transparente
+st.markdown("<h1>Cálculo Valor Venal 2025</h1>", unsafe_allow_html=True)
 
 # Layout de Colunas: Esquerda (Inputs) vs Direita (Resultados)
-col_input, col_result = st.columns([1.2, 1], gap="large")
+col_input, col_result = st.columns([1.1, 1], gap="large")
 
 with col_input:
-    # CARD TERRENO
-    with st.container(border=True):
-        st.subheader("🏡 Dados do Terreno")
-        
-        bairros_lista = sorted(VALORES_BAIRRO.keys())
-        bairro_selecionado = st.selectbox(
-            "Selecione o Bairro / Região:", 
-            bairros_lista, 
-            help="Consulte o Anexo I se tiver dúvida"
-        )
-        
-        valor_m2_terreno = VALORES_BAIRRO[bairro_selecionado]
-        st.caption(f"Valor Base do Terreno: **{formatar_moeda(valor_m2_terreno)} / m²**")
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            area_lote = st.number_input("Área do Lote (m²):", min_value=0.0, format="%.2f")
-        with c2:
-            fracao_ideal = st.number_input("Fração Ideal:", min_value=0.0, value=1.0, format="%.4f", step=0.0001)
+    # --- BLOCO TERRENO (GLASS) ---
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown("### 🏡 Dados do Terreno")
+    
+    bairros_lista = sorted(VALORES_BAIRRO.keys())
+    bairro_selecionado = st.selectbox("Selecione o Bairro / Região:", bairros_lista)
+    
+    valor_m2_terreno = VALORES_BAIRRO[bairro_selecionado]
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        area_lote = st.number_input("Área do Lote (m²):", min_value=0.0, format="%.2f")
+    with c2:
+        fracao_ideal = st.number_input("Fração Ideal:", min_value=0.0, value=1.0, format="%.4f")
+    
+    st.caption(f"Valor Base do Terreno: **{formatar_moeda(valor_m2_terreno)} / m²**")
+    st.markdown('</div>', unsafe_allow_html=True) # Fim Glass Card
+
+    # --- BLOCO CONSTRUÇÃO (GLASS) ---
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown("### 🏗️ Construções")
+    
+    # Gerenciamento de lista na sessão
+    if 'imoveis' not in st.session_state:
+        st.session_state.imoveis = [{"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]}]
+
+    # Botões de controle estilizados
+    col_add, col_clean = st.columns([1, 1])
+    if col_add.button("➕ Adicionar Edificação"):
+        st.session_state.imoveis.append({"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]})
+    
+    if col_clean.button("🧹 Limpar Lista"):
+        st.session_state.imoveis = [{"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]}]
 
     st.write("") # Espaço
 
-    # CARD CONSTRUÇÃO
-    with st.container(border=True):
-        st.subheader("🏗️ Construções")
+    # Renderização dos campos
+    opcoes_construcao = [k for k in VALORES_EDIFICACAO.keys() if VALORES_EDIFICACAO[k] > 0 or "SEM CONSTRUÇÃO" in k]
+    
+    for i, item in enumerate(st.session_state.imoveis):
+        # Input de Área
+        new_area = st.number_input(
+            f"Área (m²) - Item {i+1}", 
+            min_value=0.0, 
+            format="%.2f", 
+            key=f"area_{i}", 
+            value=item['area']
+        )
         
-        # Gerenciamento de lista na sessão
-        if 'imoveis' not in st.session_state:
-            st.session_state.imoveis = [{"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]}]
-
-        # Botões de controle de lista
-        col_add, col_clean = st.columns([1, 1])
-        if col_add.button("➕ Adicionar Edificação"):
-            st.session_state.imoveis.append({"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]})
+        # Input de Tipo
+        new_tipo = st.selectbox(
+            f"Tipo - Item {i+1}", 
+            options=opcoes_construcao, 
+            key=f"tipo_{i}", 
+            index=opcoes_construcao.index(item['tipo']) if item['tipo'] in opcoes_construcao else 0
+        )
         
-        if col_clean.button("🧹 Limpar Lista"):
-            st.session_state.imoveis = [{"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]}]
-
-        # Renderização dos campos
-        opcoes_construcao = [k for k in VALORES_EDIFICACAO.keys() if VALORES_EDIFICACAO[k] > 0 or "SEM CONSTRUÇÃO" in k]
-        
-        for i, item in enumerate(st.session_state.imoveis):
-            st.markdown(f"**Item {i+1}**")
-            
-            # Input de Área
-            new_area = st.number_input(
-                f"Área Construída (m²)", 
-                min_value=0.0, 
-                format="%.2f", 
-                key=f"area_{i}", 
-                value=item['area'],
-                label_visibility="collapsed"
-            )
-            
-            # Input de Tipo
-            new_tipo = st.selectbox(
-                f"Tipo", 
-                options=opcoes_construcao, 
-                key=f"tipo_{i}", 
-                index=opcoes_construcao.index(item['tipo']) if item['tipo'] in opcoes_construcao else 0,
-                label_visibility="collapsed"
-            )
-            
-            st.session_state.imoveis[i]['area'] = new_area
-            st.session_state.imoveis[i]['tipo'] = new_tipo
-            st.markdown("---")
+        st.session_state.imoveis[i]['area'] = new_area
+        st.session_state.imoveis[i]['tipo'] = new_tipo
+        st.markdown("---")
+    
+    st.markdown('</div>', unsafe_allow_html=True) # Fim Glass Card
 
 
-# COLUNA DA DIREITA: RESULTADO "AO VIVO"
+# COLUNA DA DIREITA: RESULTADO EM VIDRO
 with col_result:
-    # Cálculos em tempo real (sem botão calcular)
+    # Cálculos em tempo real
     val_terreno_total = area_lote * fracao_ideal * valor_m2_terreno
     
     val_construcao_total = 0
@@ -412,11 +419,11 @@ with col_result:
     
     valor_final = val_terreno_total + val_construcao_total
 
-    # Renderização Visual (Papel Digital)
-    st.markdown('<div class="receipt-container">', unsafe_allow_html=True)
+    # Renderização Visual Glass
+    st.markdown('<div class="result-glass">', unsafe_allow_html=True)
     
-    st.markdown("### 📄 Certidão de Lançamento")
-    st.divider()
+    st.markdown("### Demonstrativo de Valor Venal")
+    st.markdown("---")
     
     # 1. TERRENO
     st.markdown("#### 1. Terreno")
@@ -432,19 +439,16 @@ with col_result:
         st.markdown("_Nenhuma edificação lançada_")
     else:
         for d in detalhes_constr:
-            # Texto limpo sem HTML injection
-            st.markdown(f"• {d[1]}m² ({d[0][:20]}...) → **{formatar_moeda(d[3])}**")
+            # Texto limpo
+            st.markdown(f"• {d[1]}m² ({d[0][:15]}...) → **{formatar_moeda(d[3])}**")
             
     st.markdown(f"Total Construído: **{formatar_moeda(val_construcao_total)}**")
     
-    st.divider()
+    st.markdown("---")
     
     # TOTAL
-    st.markdown(f"<div class='total-value'>{formatar_moeda(valor_final)}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='extenso-text'>({numero_por_extenso(valor_final)})</div>", unsafe_allow_html=True)
+    st.markdown("#### Valor Venal Total")
+    st.markdown(f"<div class='total-big'>{formatar_moeda(valor_final)}</div>", unsafe_allow_html=True)
+    st.markdown(f"<p style='font-style: italic; color: #555;'>({numero_por_extenso(valor_final)})</p>", unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Botão de Impressão (Falso, apenas visual)
-    st.write("")
-    st.caption("ℹ️ Os valores são atualizados automaticamente conforme o preenchimento.")
