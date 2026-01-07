@@ -2,92 +2,89 @@ import streamlit as st
 import math
 
 # ==============================================================================
-# CONFIGURAÇÃO E ESTILO (DESIGN LIQUID GLASS)
+# CONFIGURAÇÃO GERAL
 # ==============================================================================
 st.set_page_config(
     page_title="Cálculo Valor Venal 2025",
-    page_icon="💎",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# CSS AVANÇADO - AESTHETIC LIQUID GLASS
+# ==============================================================================
+# ESTILO CSS (MINIMALISTA / INSTITUCIONAL)
+# ==============================================================================
 st.markdown("""
     <style>
-    /* 1. FUNDO GRADIENTE ANIMADO (Base do Liquid Glass) */
+    /* 1. FUNDO BRANCO PURO */
     .stApp {
-        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
-        background-size: 400% 400%;
-        animation: gradient 15s ease infinite;
+        background-color: #ffffff;
+        color: #000000;
     }
     
-    @keyframes gradient {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+    /* 2. REMOÇÃO DOS BOTÕES +/- (STEPPERS) */
+    /* Esconde os botões dentro do input numérico */
+    div[data-testid="stNumberInput"] button {
+        display: none !important;
+    }
+    /* Remove a margem que sobrava */
+    div[data-testid="stNumberInput"] > div > div > div {
+        padding-right: 0 !important;
     }
 
-    /* 2. REMOÇÃO AGRESSIVA DOS BOTÕES +/- (SPINNERS) */
-    input[type=number]::-webkit-inner-spin-button, 
-    input[type=number]::-webkit-outer-spin-button { 
-        -webkit-appearance: none; 
-        margin: 0 !important; 
-    }
-    input[type=number] {
-        -moz-appearance: textfield !important;
-        appearance: textfield !important;
-    }
-
-    /* 3. CARTÕES DE VIDRO (GLASSMORPHISM) */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.25);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border-radius: 15px;
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        padding: 25px;
-        margin-bottom: 20px;
-        color: #1a1a1a;
-    }
-
-    /* 4. RESULTADO EM DESTAQUE */
-    .result-glass {
-        background: rgba(255, 255, 255, 0.85); /* Mais opaco para leitura */
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(12px);
-        border-radius: 15px;
-        padding: 30px;
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        text-align: center;
-    }
-
-    /* Ajuste de tipografia para fundo colorido */
-    h1, h2, h3, h4, p, label, .stMarkdown {
-        color: #0d1b2a !important; /* Azul escuro quase preto para contraste */
-        text-shadow: 0px 0px 2px rgba(255,255,255,0.5);
+    /* 3. TIPOGRAFIA SÓBRIA */
+    html, body, [class*="css"] {
+        font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        color: #333333;
     }
     
-    /* Inputs translúcidos */
-    .stSelectbox > div > div, .stNumberInput > div > div {
-        background-color: rgba(255, 255, 255, 0.6) !important;
-        border: none !important;
-        border-radius: 10px !important;
+    h1, h2, h3 {
+        font-weight: 600;
+        color: #111111;
+        letter-spacing: -0.5px;
+    }
+
+    /* 4. RECIPIENTE DE RESULTADO (ESTILO PAPEL) */
+    .receipt-box {
+        background-color: #f8f9fa; /* Cinza muito leve */
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        padding: 40px;
+        margin-top: 20px;
+        box-shadow: none; /* Remove sombras exageradas */
+    }
+
+    /* 5. INPUTS MAIS LIMPOS */
+    .stSelectbox div[data-baseweb="select"] {
+        border-radius: 4px;
+        border-color: #cccccc;
+    }
+    .stNumberInput input {
+        border-radius: 4px;
+        border-color: #cccccc;
     }
     
-    /* Valor Total Gigante */
-    .total-big {
-        font-size: 2.5rem;
-        font-weight: 800;
-        background: -webkit-linear-gradient(#1c4fd6, #14368a);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-top: 10px;
+    /* 6. REMOVER BARRAS COLORIDAS (DECORATION) DO STREAMLIT */
+    header[data-testid="stHeader"] {
+        display: none;
+    }
+    .block-container {
+        padding-top: 2rem;
+    }
+    
+    /* 7. BOTÕES DE AÇÃO DISCRETOS */
+    button[kind="primary"] {
+        background-color: #333333;
+        border: none;
+        color: white;
+    }
+    button[kind="primary"]:hover {
+        background-color: #555555;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# LÓGICA E DADOS (Mantidos e Otimizados)
+# LÓGICA E DADOS (Mantidos)
 # ==============================================================================
 
 def formatar_moeda(valor):
@@ -96,6 +93,7 @@ def formatar_moeda(valor):
 
 def numero_por_extenso(n):
     if n == 0: return "zero reais"
+    # Lógica de extenso simplificada e robusta
     unidades = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"]
     dezespeciais = ["dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"]
     dezenas = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"]
@@ -141,7 +139,7 @@ def numero_por_extenso(n):
         
     return (texto_reais + texto_centavos).upper()
 
-# DADOS (Resumidos para caber, mas completos na lógica)
+# DADOS COMPLETOS
 VALORES_EDIFICACAO = {
     "R-1 (Unifamiliar) - Baixo - Novo": 2369.59,
     "R-1 (Unifamiliar) - Baixo - Bom (4-8 anos)": 1895.67,
@@ -331,124 +329,36 @@ VALORES_BAIRRO = {
 # INTERFACE PRINCIPAL
 # ==============================================================================
 
-# Cabeçalho Transparente
-st.markdown("<h1>Cálculo Valor Venal 2025</h1>", unsafe_allow_html=True)
+# Cabeçalho limpo
+st.title("Cálculo Valor Venal 2025")
+st.markdown("---")
 
-# Layout de Colunas: Esquerda (Inputs) vs Direita (Resultados)
-col_input, col_result = st.columns([1.1, 1], gap="large")
+col_left, col_right = st.columns([1, 1], gap="large")
 
-with col_input:
-    # --- BLOCO TERRENO (GLASS) ---
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.markdown("### 🏡 Dados do Terreno")
+with col_left:
+    # SEÇÃO TERRENO (SEM MOLDURAS EXAGERADAS)
+    st.subheader("1. Dados do Terreno")
     
     bairros_lista = sorted(VALORES_BAIRRO.keys())
-    bairro_selecionado = st.selectbox("Selecione o Bairro / Região:", bairros_lista)
-    
+    bairro_selecionado = st.selectbox("Bairro / Região", bairros_lista)
     valor_m2_terreno = VALORES_BAIRRO[bairro_selecionado]
+    
+    st.caption(f"Valor Planta: {formatar_moeda(valor_m2_terreno)} / m²")
     
     c1, c2 = st.columns(2)
     with c1:
-        area_lote = st.number_input("Área do Lote (m²):", min_value=0.0, format="%.2f")
+        area_lote = st.number_input("Área do Lote (m²)", min_value=0.0, format="%.2f")
     with c2:
-        fracao_ideal = st.number_input("Fração Ideal:", min_value=0.0, value=1.0, format="%.4f")
-    
-    st.caption(f"Valor Base do Terreno: **{formatar_moeda(valor_m2_terreno)} / m²**")
-    st.markdown('</div>', unsafe_allow_html=True) # Fim Glass Card
+        fracao_ideal = st.number_input("Fração Ideal", min_value=0.0, value=1.0, format="%.4f")
+        
+    st.write("")
+    st.write("")
 
-    # --- BLOCO CONSTRUÇÃO (GLASS) ---
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.markdown("### 🏗️ Construções")
+    # SEÇÃO CONSTRUÇÃO
+    st.subheader("2. Edificações")
     
-    # Gerenciamento de lista na sessão
     if 'imoveis' not in st.session_state:
         st.session_state.imoveis = [{"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]}]
 
-    # Botões de controle estilizados
-    col_add, col_clean = st.columns([1, 1])
-    if col_add.button("➕ Adicionar Edificação"):
-        st.session_state.imoveis.append({"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]})
-    
-    if col_clean.button("🧹 Limpar Lista"):
-        st.session_state.imoveis = [{"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]}]
-
-    st.write("") # Espaço
-
-    # Renderização dos campos
-    opcoes_construcao = [k for k in VALORES_EDIFICACAO.keys() if VALORES_EDIFICACAO[k] > 0 or "SEM CONSTRUÇÃO" in k]
-    
-    for i, item in enumerate(st.session_state.imoveis):
-        # Input de Área
-        new_area = st.number_input(
-            f"Área (m²) - Item {i+1}", 
-            min_value=0.0, 
-            format="%.2f", 
-            key=f"area_{i}", 
-            value=item['area']
-        )
-        
-        # Input de Tipo
-        new_tipo = st.selectbox(
-            f"Tipo - Item {i+1}", 
-            options=opcoes_construcao, 
-            key=f"tipo_{i}", 
-            index=opcoes_construcao.index(item['tipo']) if item['tipo'] in opcoes_construcao else 0
-        )
-        
-        st.session_state.imoveis[i]['area'] = new_area
-        st.session_state.imoveis[i]['tipo'] = new_tipo
-        st.markdown("---")
-    
-    st.markdown('</div>', unsafe_allow_html=True) # Fim Glass Card
-
-
-# COLUNA DA DIREITA: RESULTADO EM VIDRO
-with col_result:
-    # Cálculos em tempo real
-    val_terreno_total = area_lote * fracao_ideal * valor_m2_terreno
-    
-    val_construcao_total = 0
-    detalhes_constr = []
-    
-    for item in st.session_state.imoveis:
-        if item['area'] > 0:
-            v_m2 = VALORES_EDIFICACAO[item['tipo']]
-            v_total = item['area'] * v_m2
-            val_construcao_total += v_total
-            detalhes_constr.append((item['tipo'], item['area'], v_m2, v_total))
-    
-    valor_final = val_terreno_total + val_construcao_total
-
-    # Renderização Visual Glass
-    st.markdown('<div class="result-glass">', unsafe_allow_html=True)
-    
-    st.markdown("### Demonstrativo de Valor Venal")
-    st.markdown("---")
-    
-    # 1. TERRENO
-    st.markdown("#### 1. Terreno")
-    st.markdown(f"**Bairro:** {bairro_selecionado}")
-    st.markdown(f"**Área Tributável:** {area_lote * fracao_ideal:.2f} m²")
-    st.markdown(f"Valor Venal: **{formatar_moeda(val_terreno_total)}**")
-    
-    st.write("") # Espaço
-    
-    # 2. CONSTRUÇÕES
-    st.markdown("#### 2. Edificações")
-    if not detalhes_constr:
-        st.markdown("_Nenhuma edificação lançada_")
-    else:
-        for d in detalhes_constr:
-            # Texto limpo
-            st.markdown(f"• {d[1]}m² ({d[0][:15]}...) → **{formatar_moeda(d[3])}**")
-            
-    st.markdown(f"Total Construído: **{formatar_moeda(val_construcao_total)}**")
-    
-    st.markdown("---")
-    
-    # TOTAL
-    st.markdown("#### Valor Venal Total")
-    st.markdown(f"<div class='total-big'>{formatar_moeda(valor_final)}</div>", unsafe_allow_html=True)
-    st.markdown(f"<p style='font-style: italic; color: #555;'>({numero_por_extenso(valor_final)})</p>", unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Renderização da lista
+    opcoes_construcao = [k for k in
