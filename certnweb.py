@@ -361,4 +361,64 @@ with col_left:
         st.session_state.imoveis = [{"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]}]
 
     # Renderização da lista
-    opcoes_construcao = [k for k in
+    opcoes_construcao = [k for k in VALORES_EDIFICACAO.keys() if VALORES_EDIFICACAO[k] > 0 or "SEM CONSTRUÇÃO" in k]
+    
+    for i, item in enumerate(st.session_state.imoveis):
+        st.markdown(f"**Item {i+1}**")
+        new_area = st.number_input(f"Área (m²) - Item {i+1}", min_value=0.0, format="%.2f", key=f"area_{i}", value=item['area'], label_visibility="collapsed")
+        new_tipo = st.selectbox(f"Tipo - Item {i+1}", options=opcoes_construcao, key=f"tipo_{i}", index=opcoes_construcao.index(item['tipo']) if item['tipo'] in opcoes_construcao else 0, label_visibility="collapsed")
+        
+        st.session_state.imoveis[i]['area'] = new_area
+        st.session_state.imoveis[i]['tipo'] = new_tipo
+        st.markdown("---")
+
+    # Botões de controle
+    cb1, cb2 = st.columns(2)
+    if cb1.button("Adicionar Item", use_container_width=True):
+        st.session_state.imoveis.append({"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]})
+    if cb2.button("Limpar Lista", type="primary", use_container_width=True):
+        st.session_state.imoveis = [{"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]}]
+
+
+with col_right:
+    # CÁLCULOS
+    val_terreno_total = area_lote * fracao_ideal * valor_m2_terreno
+    
+    val_construcao_total = 0
+    detalhes_constr = []
+    
+    for item in st.session_state.imoveis:
+        if item['area'] > 0:
+            v_m2 = VALORES_EDIFICACAO[item['tipo']]
+            v_total = item['area'] * v_m2
+            val_construcao_total += v_total
+            detalhes_constr.append((item['tipo'], item['area'], v_m2, v_total))
+            
+    valor_final = val_terreno_total + val_construcao_total
+
+    # EXIBIÇÃO TIPO "PAPEL" (RECEIPT)
+    st.markdown('<div class="receipt-box">', unsafe_allow_html=True)
+    st.markdown("### Demonstrativo de Valor Venal")
+    st.markdown("---")
+    
+    st.markdown("**TERRENO**")
+    st.text(f"Bairro: {bairro_selecionado}")
+    st.text(f"Área Tributável: {area_lote * fracao_ideal:.2f} m²")
+    st.markdown(f"Subtotal: **{formatar_moeda(val_terreno_total)}**")
+    
+    st.write("")
+    st.markdown("**CONSTRUÇÕES**")
+    if not detalhes_constr:
+        st.text("- Nenhuma edificação lançada")
+    else:
+        for d in detalhes_constr:
+            st.text(f"- {d[1]}m² ({d[0]})")
+            st.text(f"  {formatar_moeda(d[3])}")
+    
+    st.markdown(f"Subtotal: **{formatar_moeda(val_construcao_total)}**")
+    
+    st.markdown("---")
+    st.markdown(f"### TOTAL: {formatar_moeda(valor_final)}")
+    st.caption(f"({numero_por_extenso(valor_final)})")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
