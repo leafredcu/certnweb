@@ -4,15 +4,15 @@ import math
 from datetime import datetime
 
 # ==============================================================================
-# CONFIGURAÇÃO INICIAL
+# CONFIGURAÇÃO GERAL
 # ==============================================================================
 st.set_page_config(page_title="Cálculo Valor Venal 2025", layout="wide")
 
 # ==============================================================================
-# DADOS EXATOS DO DECRETO Nº 1.849/2025 (SEM ABREVIAÇÕES)
+# DADOS EXATOS DO DECRETO Nº 1.849/2025
 # ==============================================================================
 
-# [cite_start]ANEXO III - EDIFICAÇÕES (Páginas 12 e 13 do PDF original) [cite: 497-628]
+# ANEXO III - EDIFICAÇÕES
 VALORES_EDIFICACAO = {
     # PADRÃO BAIXO
     "R-1 - Residencial unifamiliar - PADRÃO BAIXO - Novo": 2369.59,
@@ -117,7 +117,7 @@ VALORES_EDIFICACAO = {
     "SEM CONSTRUÇÃO (Lote Vago)": 0.0
 }
 
-# [cite_start]ANEXO I - TERRENOS (Texto Integral do PDF páginas 5 a 9) [cite: 106-431]
+# ANEXO I - TERRENOS
 VALORES_BAIRRO = {
     "Aleixa Ferreira: 01; 02; 03; 04; 05; 06; 07; 08; 09; 10; 11; 12; 13 e 14": 550.00,
     "Brasília - Região Antenas: Parte das quadras 15 e 16 com frente para rua Pedro Pinheiro": 200.00,
@@ -346,7 +346,7 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     y += 12
     pdf.set_font("Arial", 'B', 14)
     pdf.set_xy(start_x, y)
-    pdf.cell(col_width, 20, f"{area_lote:,.2f} M2".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
+    pdf.cell(col_width, 20, f"{area_lote:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
     
     pdf.set_xy(start_x + col_width + gap, y)
     pdf.cell(col_width, 20, f"{valor_m2_lote:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
@@ -370,7 +370,7 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     y += 12
     pdf.set_font("Arial", 'B', 14)
     pdf.set_xy(start_x, y)
-    pdf.cell(col_width, 20, f"{area_constr:,.2f} M2".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
+    pdf.cell(col_width, 20, f"{area_constr:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
     
     pdf.set_xy(start_x + col_width + gap, y)
     pdf.cell(col_width, 20, f"{valor_m2_constr:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
@@ -424,6 +424,13 @@ st.markdown("""
         height: auto;
         min-height: 38px;
     }
+    .discrete-value {
+        font-size: 0.85rem;
+        color: #666;
+        font-style: italic;
+        margin-top: -10px;
+        margin-bottom: 10px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -441,31 +448,39 @@ with col1:
     bairros_lista = sorted(VALORES_BAIRRO.keys())
     bairro_selecionado = st.selectbox("Bairro / Região", bairros_lista)
     valor_m2_terreno = VALORES_BAIRRO[bairro_selecionado]
+    st.caption(f"Valor Base: {formatar_moeda(valor_m2_terreno)} / m²")
     
-    area_lote = st.number_input("Área do Lote (m²)", min_value=0.0, format="%.2f")
-    fracao_ideal = st.number_input("Fração Ideal", min_value=0.0, value=1.0, format="%.4f")
+    # Campo de Área com 4 casas decimais e step fino
+    area_lote = st.number_input("Área do Lote (m²)", min_value=0.0, format="%.4f", step=0.0001)
+    
+    fracao_ideal = st.number_input("Fração Ideal", min_value=0.0, value=1.0, format="%.4f", step=0.0001)
 
     st.write("")
     st.subheader("2. Edificação")
     opcoes_constr = sorted(list(VALORES_EDIFICACAO.keys()))
     tipo_constr = st.selectbox("Tipo de Construção", opcoes_constr)
     valor_m2_constr = VALORES_EDIFICACAO[tipo_constr]
+    st.caption(f"Valor Base: {formatar_moeda(valor_m2_constr)} / m²")
     
-    area_constr = st.number_input("Área Construída (m²)", min_value=0.0, format="%.2f")
+    # Campo de Área Construída com 4 casas decimais
+    area_constr = st.number_input("Área Construída (m²)", min_value=0.0, format="%.4f", step=0.0001)
 
 with col2:
     st.subheader("Resultado")
     
-    # Cálculos
+    # Cálculos com precisão total (float)
     total_terreno = area_lote * fracao_ideal * valor_m2_terreno
     total_constr = area_constr * valor_m2_constr
     total_final = total_terreno + total_constr
-    extenso = numero_por_extenso(total_final)
+    
+    # Arredondamento final apenas para exibição e extenso
+    total_final_rounded = round(total_final, 2)
+    extenso = numero_por_extenso(total_final_rounded)
     
     # Exibição Tela
     st.markdown(f"**Valor Terreno:** {formatar_moeda(total_terreno)}")
     st.markdown(f"**Valor Construção:** {formatar_moeda(total_constr)}")
-    st.markdown(f"### TOTAL: {formatar_moeda(total_final)}")
+    st.markdown(f"### TOTAL: {formatar_moeda(total_final_rounded)}")
     st.caption(f"({extenso})")
     
     st.write("")
@@ -480,7 +495,7 @@ with col2:
             area_constr,
             valor_m2_constr,
             total_constr,
-            total_final,
+            total_final_rounded,
             extenso,
             bairro_selecionado,
             tipo_constr
