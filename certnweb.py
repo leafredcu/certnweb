@@ -512,7 +512,7 @@ with col2:
     # GERAÇÃO DO PDF
     if total_final > 0:
         pdf_bytes = create_pdf(
-            area_lote * fracao_ideal, 
+            area_lote, # <--- MUDANÇA AQUI: Passando a área bruta, não a calculada
             valor_m2_terreno, 
             total_terreno,
             area_constr,
