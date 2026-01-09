@@ -379,7 +379,8 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     pdf.cell(col_width, 20, f"{total_constr:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
     # Detalhes pequenos abaixo (Bairro, Fração e Tipo)
-    y += 25
+    # Aumentei o espaçamento Y para garantir que não sobreponha
+    y += 30 
     pdf.set_font("Arial", '', 8)
     pdf.set_xy(start_x, y)
     # Limita o tamanho do texto para não quebrar o layout
@@ -396,7 +397,7 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     pdf.multi_cell(col_width * 3, 4, info_text, align='L')
 
     # 3. TOTAL E EXTENSO
-    y += 15
+    y += 20 # Mais espaço antes do total
     pdf.set_font("Arial", 'B', 10)
     pdf.set_xy(start_x, y)
     texto_final = f"TOTAL DA AVALIAÇÃO: R$ {total_final:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.') + f" ({extenso})"
