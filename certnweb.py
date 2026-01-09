@@ -368,8 +368,9 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     pdf.cell(col_width, 20, f"{valor_m2_lote:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
     
     # --- TERCEIRA CAIXA (TOTAL) ---
+    # AGORA COM 4 CASAS DECIMAIS NO PDF
     pdf.set_xy(start_x + (col_width + gap)*2, y_antes)
-    pdf.cell(col_width, 20, f"{total_lote:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
+    pdf.cell(col_width, 20, f"{total_lote:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
     # 2. LINHA 2 - CONSTRUÇÃO
     y += 25
@@ -392,8 +393,9 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     pdf.set_xy(start_x + col_width + gap, y)
     pdf.cell(col_width, 20, f"{valor_m2_constr:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
     
+    # AGORA COM 4 CASAS DECIMAIS NO PDF
     pdf.set_xy(start_x + (col_width + gap)*2, y)
-    pdf.cell(col_width, 20, f"{total_constr:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
+    pdf.cell(col_width, 20, f"{total_constr:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
     # Detalhes pequenos abaixo (Bairro e Tipo - SEM Fração Ideal aqui pois já está na caixa)
     y += 30 
@@ -512,7 +514,7 @@ with col2:
     # GERAÇÃO DO PDF
     if total_final > 0:
         pdf_bytes = create_pdf(
-            area_lote, # <--- MUDANÇA AQUI: Passando a área bruta, não a calculada
+            area_lote, # <--- Passando a área bruta
             valor_m2_terreno, 
             total_terreno,
             area_constr,
@@ -528,7 +530,7 @@ with col2:
         st.download_button(
             label="📄 BAIXAR PDF (TABELA OFICIAL)",
             data=pdf_bytes,
-            file_name=f"calculo_venal_{datetime.now().strftime('%d_%m_%Y')}.pdf",
+            file_name=f"calculo_venal_{datetime.now().strftime('%d_%m_%Y_%H_%M_%S')}.pdf",
             mime="application/pdf",
             type="primary"
         )
