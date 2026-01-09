@@ -314,7 +314,7 @@ class PDF(FPDF):
             op = 'S'
         self._out(op)
 
-def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_constr, total_constr, total_final, extenso, bairro, tipo_constr):
+def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_constr, total_constr, total_final, extenso, bairro, tipo_constr, fracao_ideal):
     pdf = PDF(orientation='L', unit='mm', format='A4') # Paisagem
     pdf.add_page()
     pdf.set_font("Arial", 'B', 12)
@@ -378,14 +378,22 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     pdf.set_xy(start_x + (col_width + gap)*2, y)
     pdf.cell(col_width, 20, f"{total_constr:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
-    # Detalhes pequenos abaixo
+    # Detalhes pequenos abaixo (Bairro, Fração e Tipo)
     y += 25
     pdf.set_font("Arial", '', 8)
     pdf.set_xy(start_x, y)
     # Limita o tamanho do texto para não quebrar o layout
     bairro_resumo = (bairro[:90] + '...') if len(bairro) > 90 else bairro
     tipo_resumo = (tipo_constr[:90] + '...') if len(tipo_constr) > 90 else tipo_constr
-    pdf.multi_cell(col_width * 3, 4, f"Bairro: {bairro_resumo}\nTipo Construção: {tipo_resumo}", align='L')
+    
+    # Monta o bloco de texto com a Fração Ideal
+    info_text = (
+        f"Bairro: {bairro_resumo}\n"
+        f"Fração Ideal: {fracao_ideal:.4f}\n"
+        f"Tipo Construção: {tipo_resumo}"
+    )
+    
+    pdf.multi_cell(col_width * 3, 4, info_text, align='L')
 
     # 3. TOTAL E EXTENSO
     y += 15
@@ -498,7 +506,8 @@ with col2:
             total_final_rounded,
             extenso,
             bairro_selecionado,
-            tipo_constr
+            tipo_constr,
+            fracao_ideal # Passando a fração ideal para o PDF
         )
         
         st.download_button(
