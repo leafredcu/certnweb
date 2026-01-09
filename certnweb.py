@@ -345,13 +345,30 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     # Values (Caixas de baixo)
     y += 12
     pdf.set_font("Arial", 'B', 14)
-    pdf.set_xy(start_x, y)
-    pdf.cell(col_width, 20, f"{area_lote:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
     
-    pdf.set_xy(start_x + col_width + gap, y)
+    # --- PRIMEIRA CAIXA (ÁREA LOTE + FRAÇÃO IDEAL) ---
+    pdf.set_xy(start_x, y)
+    
+    # Prepara os textos
+    area_lote_fmt = f"{area_lote:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.')
+    fi_fmt = f"F.I: {fracao_ideal:.4f}".replace(',', '_').replace('.', ',').replace('_', '.')
+    conteudo_caixa_1 = f"{area_lote_fmt}\n{fi_fmt}"
+    
+    # Salva posição antes de usar MultiCell
+    x_antes = pdf.get_x()
+    y_antes = pdf.get_y()
+    
+    # Usa MultiCell para permitir duas linhas dentro da caixa
+    # Altura da linha = 10 (total 20 para 2 linhas), alinhado ao centro, com borda
+    pdf.multi_cell(col_width, 10, conteudo_caixa_1, border=1, align='C')
+    
+    # --- SEGUNDA CAIXA (VALOR M2) ---
+    # Move o cursor para a posição correta da segunda caixa (ao lado da primeira)
+    pdf.set_xy(start_x + col_width + gap, y_antes)
     pdf.cell(col_width, 20, f"{valor_m2_lote:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
     
-    pdf.set_xy(start_x + (col_width + gap)*2, y)
+    # --- TERCEIRA CAIXA (TOTAL) ---
+    pdf.set_xy(start_x + (col_width + gap)*2, y_antes)
     pdf.cell(col_width, 20, f"{total_lote:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
     # 2. LINHA 2 - CONSTRUÇÃO
@@ -378,8 +395,7 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     pdf.set_xy(start_x + (col_width + gap)*2, y)
     pdf.cell(col_width, 20, f"{total_constr:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
-    # Detalhes pequenos abaixo (Bairro, Fração e Tipo)
-    # Aumentei o espaçamento Y para garantir que não sobreponha
+    # Detalhes pequenos abaixo (Bairro e Tipo - SEM Fração Ideal aqui pois já está na caixa)
     y += 30 
     pdf.set_font("Arial", '', 8)
     pdf.set_xy(start_x, y)
@@ -387,17 +403,15 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     bairro_resumo = (bairro[:90] + '...') if len(bairro) > 90 else bairro
     tipo_resumo = (tipo_constr[:90] + '...') if len(tipo_constr) > 90 else tipo_constr
     
-    # Monta o bloco de texto com a Fração Ideal
     info_text = (
         f"Bairro: {bairro_resumo}\n"
-        f"Fração Ideal: {fracao_ideal:.4f}\n"
         f"Tipo Construção: {tipo_resumo}"
     )
     
     pdf.multi_cell(col_width * 3, 4, info_text, align='L')
 
     # 3. TOTAL E EXTENSO
-    y += 20 # Mais espaço antes do total
+    y += 20
     pdf.set_font("Arial", 'B', 10)
     pdf.set_xy(start_x, y)
     texto_final = f"TOTAL DA AVALIAÇÃO: R$ {total_final:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.') + f" ({extenso})"
