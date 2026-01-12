@@ -12,7 +12,7 @@ st.set_page_config(page_title="Cálculo Valor Venal 2025", layout="wide")
 # DADOS EXATOS DO DECRETO Nº 1.849/2025
 # ==============================================================================
 
-# ANEXO III - EDIFICAÇÕES
+# ANEXO III - EDIFICAÇÕES (Mantido igual)
 VALORES_EDIFICACAO = {
     # PADRÃO BAIXO
     "R-1 - Residencial unifamiliar - PADRÃO BAIXO - Novo": 2369.59,
@@ -117,7 +117,7 @@ VALORES_EDIFICACAO = {
     "SEM CONSTRUÇÃO (Lote Vago)": 0.0
 }
 
-# ANEXO I - TERRENOS
+# ANEXO I - TERRENOS (Mantido igual)
 VALORES_BAIRRO = {
     "Aleixa Ferreira: 01; 02; 03; 04; 05; 06; 07; 08; 09; 10; 11; 12; 13 e 14": 550.00,
     "Brasília - Região Antenas: Parte das quadras 15 e 16 com frente para rua Pedro Pinheiro": 200.00,
@@ -243,11 +243,9 @@ def numero_por_extenso(n):
         if num == 100: return "CEM"
         s = ""
         c, d, u = (num // 100), (num % 100 // 10), (num % 10)
-        
         if c > 0:
             s += centenas[c]
             if d > 0 or u > 0: s += " E "
-        
         if d == 1:
             s += dezespeciais[u]
         elif d > 1:
@@ -261,34 +259,27 @@ def numero_por_extenso(n):
     inteiro = int(n)
     centavos = int(round((n - inteiro) * 100))
     parts = []
-    
     bilhao = (inteiro // 1000000000) % 1000
     if bilhao > 0: parts.append(f"{convert_group(bilhao)} {'BILHÃO' if bilhao == 1 else 'BILHÕES'}")
-    
     milhao = (inteiro // 1000000) % 1000
     if milhao > 0: parts.append(f"{convert_group(milhao)} {'MILHÃO' if milhao == 1 else 'MILHÕES'}")
-    
     mil = (inteiro // 1000) % 1000
     if mil > 0:
         if mil == 1: parts.append("MIL")
         else: parts.append(f"{convert_group(mil)} MIL")
-    
     resto = inteiro % 1000
     if resto > 0: parts.append(f"{convert_group(resto)}")
-    
     texto_reais = ", ".join(parts).replace(", ", " E " if len(parts)==2 else ", ", 1)
     if not texto_reais: texto_reais = "ZERO"
     texto_reais += " REAL" if inteiro == 1 else " REAIS"
-    
     texto_centavos = ""
     if centavos > 0:
         texto_centavos = f" E {convert_group(centavos)}"
         texto_centavos += " CENTAVO" if centavos == 1 else " CENTAVOS"
-        
     return (texto_reais + texto_centavos).upper()
 
 # ==============================================================================
-# CLASSE PARA GERAR PDF (ESTILO TABELA)
+# CLASSE PARA GERAR PDF (ESTILO TABELA FLUIDA)
 # ==============================================================================
 class PDF(FPDF):
     def rounded_rect(self, x, y, w, h, r, style=''):
@@ -324,21 +315,28 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     construcoes_validas = [c for c in lista_construcoes if c['area'] > 0]
     
     # Configurações de layout
-    margin_top = 20
     col_width = 80
     gap = 2
     start_x = 20
     
+    def draw_headers(y_pos):
+        pdf.set_xy(start_x, y_pos)
+        pdf.cell(col_width, 10, "ÁREA CONSTRUÍDA", border=1, align='C')
+        pdf.set_xy(start_x + col_width + gap, y_pos)
+        pdf.cell(col_width, 10, "VALOR P/ M2 CONSTRUÇÃO", border=1, align='C')
+        pdf.set_xy(start_x + (col_width + gap)*2, y_pos)
+        pdf.cell(col_width, 10, "TOTAL", border=1, align='C')
+        return y_pos + 10
+
     # DATA NO TOPO
     pdf.set_xy(start_x, 10)
     pdf.cell(0, 10, datetime.now().strftime("%d/%m/%Y"), align='C')
 
     # ===============================================
-    # 1. LINHA 1 - LOTE
+    # 1. LINHA 1 - LOTE (Fixa)
     # ===============================================
-    y = margin_top
-    
-    # Headers
+    y = 20
+    pdf.set_font("Arial", 'B', 12)
     pdf.set_xy(start_x, y)
     pdf.cell(col_width, 10, "ÁREA LOTE", border=1, align='C')
     pdf.set_xy(start_x + col_width + gap, y)
@@ -346,7 +344,6 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.set_xy(start_x + (col_width + gap)*2, y)
     pdf.cell(col_width, 10, "TOTAL", border=1, align='C')
     
-    # Values
     y += 12
     pdf.set_font("Arial", 'B', 14)
     
@@ -356,8 +353,7 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     fi_fmt = f"F.I: {fracao_ideal:.4f}".replace(',', '_').replace('.', ',').replace('_', '.')
     pdf.multi_cell(col_width, 10, f"{area_lote_fmt}\n{fi_fmt}", border=1, align='C')
     
-    # Salva Y para alinhar próximas caixas
-    y_fixed = y 
+    y_fixed = y # Y base
     
     # Caixa 2 (Valor)
     pdf.set_xy(start_x + col_width + gap, y_fixed)
@@ -368,24 +364,15 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.cell(col_width, 20, f"{total_lote:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
     # ===============================================
-    # 2. LINHA 2 - CONSTRUÇÃO (AGORA LINHA POR LINHA)
+    # 2. CONSTRUÇÃO (Linha por linha com paginação)
     # ===============================================
     y = y_fixed + 25
     pdf.set_font("Arial", 'B', 12)
+    y = draw_headers(y) # Desenha cabeçalho e avança Y
     
-    # Headers
-    pdf.set_xy(start_x, y)
-    pdf.cell(col_width, 10, "ÁREA CONSTRUÍDA", border=1, align='C')
-    pdf.set_xy(start_x + col_width + gap, y)
-    pdf.cell(col_width, 10, "VALOR P/ M2 CONSTRUÇÃO", border=1, align='C')
-    pdf.set_xy(start_x + (col_width + gap)*2, y)
-    pdf.cell(col_width, 10, "TOTAL", border=1, align='C')
-    
-    y += 10 # Desce para começar os itens
     pdf.set_font("Arial", 'B', 12)
     
     if not construcoes_validas:
-        # Se não tiver nada, imprime uma linha zerada padrão
         pdf.set_xy(start_x, y)
         pdf.cell(col_width, 10, "0,0000 M2", border=1, align='C')
         pdf.set_xy(start_x + col_width + gap, y)
@@ -394,30 +381,37 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
         pdf.cell(col_width, 10, "R$ 0,00", border=1, align='C')
         y += 10
     else:
-        # Loop para imprimir LINHA A LINHA (Garante alinhamento perfeito)
         for i, item in enumerate(construcoes_validas):
-            altura_linha = 10
+            # Verifica se cabe na página (limite ~180mm para paisagem com margem)
+            if y > 160: 
+                pdf.add_page()
+                y = 20 # Reseta Y
+                y = draw_headers(y) # Redesenha cabeçalho
             
-            # Coluna 1
-            pdf.set_xy(start_x, y)
+            # Dados da linha
             txt_area = f"Edif. {i+1}: {item['area']:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.')
-            pdf.cell(col_width, altura_linha, txt_area, border=1, align='C')
-            
-            # Coluna 2
-            pdf.set_xy(start_x + col_width + gap, y)
             txt_val = f"R$ {item['valor_m2']:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.')
-            pdf.cell(col_width, altura_linha, txt_val, border=1, align='C')
-            
-            # Coluna 3
-            pdf.set_xy(start_x + (col_width + gap)*2, y)
             txt_total = f"R$ {item['total']:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.')
-            pdf.cell(col_width, altura_linha, txt_total, border=1, align='C')
             
-            y += altura_linha
+            # Desenha células da linha (sem MultiCell para garantir alinhamento horizontal)
+            pdf.set_xy(start_x, y)
+            pdf.cell(col_width, 10, txt_area, border=1, align='C')
+            
+            pdf.set_xy(start_x + col_width + gap, y)
+            pdf.cell(col_width, 10, txt_val, border=1, align='C')
+            
+            pdf.set_xy(start_x + (col_width + gap)*2, y)
+            pdf.cell(col_width, 10, txt_total, border=1, align='C')
+            
+            y += 10
 
     # ===============================================
-    # 3. DETALHES E RODAPÉ
+    # 3. RODAPÉ E TOTAL (Com verificação de página)
     # ===============================================
+    if y > 140: # Se estiver muito no fim, nova página para o rodapé
+        pdf.add_page()
+        y = 20
+        
     y += 5
     pdf.set_font("Arial", '', 8)
     pdf.set_xy(start_x, y)
@@ -431,17 +425,20 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     bairro_resumo = (bairro[:90] + '...') if len(bairro) > 90 else bairro
     info_text = f"Bairro: {bairro_resumo}\nLegenda Edificações:\n{lista_descricoes}"
     
-    # Imprime legenda
     pdf.multi_cell(col_width * 3, 4, info_text, align='L')
     
-    # Total Extenso
+    # Total
     y = pdf.get_y() + 5
+    # Verifica quebra novamente após a legenda
+    if y > 170:
+        pdf.add_page()
+        y = 20
+        
     pdf.set_font("Arial", 'B', 10)
     pdf.set_xy(start_x, y)
     texto_final = f"TOTAL DA AVALIAÇÃO: R$ {total_final:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.') + f" ({extenso})"
     pdf.multi_cell(250, 6, texto_final, align='L')
     
-    # Assinatura do Decreto
     y = pdf.get_y() + 10
     pdf.set_xy(start_x + 100, y)
     pdf.cell(100, 10, "VALORES CONFORME DECRETO Nº 1.849/2025", align='R')
@@ -449,7 +446,7 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     return pdf.output(dest='S').encode('latin-1')
 
 # ==============================================================================
-# CSS E ESTILOS
+# CSS
 # ==============================================================================
 st.markdown("""
     <style>
