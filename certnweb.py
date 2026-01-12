@@ -314,12 +314,22 @@ class PDF(FPDF):
             op = 'S'
         self._out(op)
 
-def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_constr, total_constr, total_final, extenso, bairro, tipo_constr, fracao_ideal):
+def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_final, extenso, bairro, fracao_ideal):
     pdf = PDF(orientation='L', unit='mm', format='A4') # Paisagem
     pdf.add_page()
     pdf.set_font("Arial", 'B', 12)
     pdf.set_line_width(0.5)
     
+    # Cálculos agregados para a Tabela
+    total_area_constr = sum(c['area'] for c in lista_construcoes)
+    total_valor_constr = sum(c['total'] for c in lista_construcoes)
+    
+    # Cálculo da "Média Ponderada" para exibição no PDF (Total R$ / Total Área)
+    # Isso garante que a tabela fique visualmente coerente: Área * Valor_Médio = Total
+    valor_m2_constr_medio = 0.0
+    if total_area_constr > 0:
+        valor_m2_constr_medio = total_valor_constr / total_area_constr
+
     # Configurações de layout
     margin_top = 20
     col_width = 80
@@ -354,26 +364,24 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     fi_fmt = f"F.I: {fracao_ideal:.4f}".replace(',', '_').replace('.', ',').replace('_', '.')
     conteudo_caixa_1 = f"{area_lote_fmt}\n{fi_fmt}"
     
-    # Salva posição antes de usar MultiCell
-    x_antes = pdf.get_x()
-    y_antes = pdf.get_y()
-    
     # Usa MultiCell para permitir duas linhas dentro da caixa
-    # Altura da linha = 10 (total 20 para 2 linhas), alinhado ao centro, com borda
     pdf.multi_cell(col_width, 10, conteudo_caixa_1, border=1, align='C')
     
+    # Salva Y após multicell
+    y_current = pdf.get_y()
+    # Volta o Y para a linha das outras caixas
+    y_fixed = y
+    
     # --- SEGUNDA CAIXA (VALOR M2) ---
-    # Move o cursor para a posição correta da segunda caixa (ao lado da primeira)
-    pdf.set_xy(start_x + col_width + gap, y_antes)
+    pdf.set_xy(start_x + col_width + gap, y_fixed)
     pdf.cell(col_width, 20, f"{valor_m2_lote:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
     
     # --- TERCEIRA CAIXA (TOTAL) ---
-    # AGORA COM 4 CASAS DECIMAIS NO PDF
-    pdf.set_xy(start_x + (col_width + gap)*2, y_antes)
+    pdf.set_xy(start_x + (col_width + gap)*2, y_fixed)
     pdf.cell(col_width, 20, f"{total_lote:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
     # 2. LINHA 2 - CONSTRUÇÃO
-    y += 25
+    y = y_fixed + 25
     pdf.set_font("Arial", 'B', 12)
     
     # Headers
@@ -388,32 +396,41 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, area_constr, valor_m2_const
     y += 12
     pdf.set_font("Arial", 'B', 14)
     pdf.set_xy(start_x, y)
-    pdf.cell(col_width, 20, f"{area_constr:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
     
+    # Área Total Construída
+    pdf.cell(col_width, 20, f"{total_area_constr:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
+    
+    # Valor Médio (Para exibição apenas)
+    # Se for apenas 1 item, mostra o valor exato. Se forem vários, mostra a média ponderada.
     pdf.set_xy(start_x + col_width + gap, y)
-    pdf.cell(col_width, 20, f"{valor_m2_constr:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
+    pdf.cell(col_width, 20, f"{valor_m2_constr_medio:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
     
-    # AGORA COM 4 CASAS DECIMAIS NO PDF
+    # Valor Total Construção
     pdf.set_xy(start_x + (col_width + gap)*2, y)
-    pdf.cell(col_width, 20, f"{total_constr:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
+    pdf.cell(col_width, 20, f"{total_valor_constr:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
-    # Detalhes pequenos abaixo (Bairro e Tipo - SEM Fração Ideal aqui pois já está na caixa)
+    # Detalhes pequenos abaixo (Bairro e Tipos)
     y += 30 
     pdf.set_font("Arial", '', 8)
     pdf.set_xy(start_x, y)
-    # Limita o tamanho do texto para não quebrar o layout
+    
+    # Monta lista de edificações para o rodapé
+    lista_descricoes = ""
+    for i, c in enumerate(lista_construcoes):
+        desc_curta = (c['tipo'][:90] + '...') if len(c['tipo']) > 90 else c['tipo']
+        lista_descricoes += f"{i+1}. {desc_curta} ({c['area']:.2f}m²)\n"
+    
     bairro_resumo = (bairro[:90] + '...') if len(bairro) > 90 else bairro
-    tipo_resumo = (tipo_constr[:90] + '...') if len(tipo_constr) > 90 else tipo_constr
     
     info_text = (
         f"Bairro: {bairro_resumo}\n"
-        f"Tipo Construção: {tipo_resumo}"
+        f"Edificações:\n{lista_descricoes}"
     )
     
     pdf.multi_cell(col_width * 3, 4, info_text, align='L')
 
     # 3. TOTAL E EXTENSO
-    y += 20
+    y = pdf.get_y() + 5
     pdf.set_font("Arial", 'B', 10)
     pdf.set_xy(start_x, y)
     texto_final = f"TOTAL DA AVALIAÇÃO: R$ {total_final:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.') + f" ({extenso})"
@@ -481,22 +498,86 @@ with col1:
     fracao_ideal = st.number_input("Fração Ideal", min_value=0.0, value=1.0, format="%.4f", step=0.0001)
 
     st.write("")
-    st.subheader("2. Edificação")
-    opcoes_constr = sorted(list(VALORES_EDIFICACAO.keys()))
-    tipo_constr = st.selectbox("Tipo de Construção", opcoes_constr)
-    valor_m2_constr = VALORES_EDIFICACAO[tipo_constr]
-    st.caption(f"Valor Base: {formatar_moeda(valor_m2_constr)} / m²")
+    st.write("")
+
+    # --- LISTA DE EDIFICAÇÕES ---
+    st.subheader("2. Edificações")
     
-    # Campo de Área Construída com 4 casas decimais
-    area_constr = st.number_input("Área Construída (m²)", min_value=0.0, format="%.4f", step=0.0001)
+    if 'imoveis' not in st.session_state:
+        st.session_state.imoveis = [{"area": 0.0, "tipo": list(VALORES_EDIFICACAO.keys())[0]}]
+
+    opcoes_construcao = sorted(list(VALORES_EDIFICACAO.keys()))
+    
+    for i, item in enumerate(st.session_state.imoveis):
+        st.markdown(f"**Item {i+1}**")
+        
+        # Tipo
+        idx_tipo = 0
+        if item['tipo'] in opcoes_construcao:
+            idx_tipo = opcoes_construcao.index(item['tipo'])
+            
+        new_tipo = st.selectbox(
+            f"Tipo - Item {i+1}", 
+            options=opcoes_construcao, 
+            key=f"tipo_{i}", 
+            index=idx_tipo,
+            label_visibility="collapsed"
+        )
+        
+        # Exibe valor base discreto
+        v_base = VALORES_EDIFICACAO[new_tipo]
+        st.caption(f"Valor Base: {formatar_moeda(v_base)} / m²")
+
+        # Área
+        new_area = st.number_input(
+            f"Área (m²) - Item {i+1}", 
+            min_value=0.0, 
+            format="%.4f", 
+            step=0.0001,
+            key=f"area_{i}", 
+            value=item['area'], 
+            label_visibility="collapsed"
+        )
+        
+        # Atualiza sessão
+        st.session_state.imoveis[i]['tipo'] = new_tipo
+        st.session_state.imoveis[i]['area'] = new_area
+        st.markdown("---")
+
+    # Botões de controle
+    cb1, cb2 = st.columns(2)
+    if cb1.button("➕ Adicionar Edificação", use_container_width=True):
+        st.session_state.imoveis.append({"area": 0.0, "tipo": opcoes_construcao[0]})
+        st.rerun()
+        
+    if cb2.button("🧹 Limpar Lista", type="primary", use_container_width=True):
+        st.session_state.imoveis = [{"area": 0.0, "tipo": opcoes_construcao[0]}]
+        st.rerun()
 
 with col2:
     st.subheader("Resultado")
     
-    # Cálculos com precisão total (float)
+    # 1. Cálculo Terreno (Precisão Total)
     total_terreno = area_lote * fracao_ideal * valor_m2_terreno
-    total_constr = area_constr * valor_m2_constr
-    total_final = total_terreno + total_constr
+    
+    # 2. Cálculo Construções (Lista)
+    lista_final_construcoes = []
+    total_constr_geral = 0.0
+    
+    for item in st.session_state.imoveis:
+        v_m2 = VALORES_EDIFICACAO[item['tipo']]
+        total_item = item['area'] * v_m2
+        total_constr_geral += total_item
+        
+        lista_final_construcoes.append({
+            "tipo": item['tipo'],
+            "area": item['area'],
+            "valor_m2": v_m2,
+            "total": total_item
+        })
+    
+    # Soma Final
+    total_final = total_terreno + total_constr_geral
     
     # Arredondamento final apenas para exibição e extenso
     total_final_rounded = round(total_final, 2)
@@ -504,33 +585,40 @@ with col2:
     
     # Exibição Tela
     st.markdown(f"**Valor Terreno:** {formatar_moeda(total_terreno)}")
-    st.markdown(f"**Valor Construção:** {formatar_moeda(total_constr)}")
+    
+    st.markdown("**Detalhamento Construções:**")
+    for c in lista_final_construcoes:
+        if c['area'] > 0:
+            st.text(f"- {c['area']:.2f}m² x {formatar_moeda(c['valor_m2'])} = {formatar_moeda(c['total'])}")
+            
+    st.markdown(f"**Total Construção:** {formatar_moeda(total_constr_geral)}")
+    
+    st.divider()
     st.markdown(f"### TOTAL: {formatar_moeda(total_final_rounded)}")
     st.caption(f"({extenso})")
     
-    st.write("")
     st.write("")
     
     # GERAÇÃO DO PDF
     if total_final > 0:
         pdf_bytes = create_pdf(
-            area_lote, # <--- Passando a área bruta
+            area_lote, # Passa a área bruta do lote
             valor_m2_terreno, 
             total_terreno,
-            area_constr,
-            valor_m2_constr,
-            total_constr,
+            lista_final_construcoes, # Passa a lista completa de edificações
             total_final_rounded,
             extenso,
             bairro_selecionado,
-            tipo_constr,
-            fracao_ideal # Passando a fração ideal para o PDF
+            fracao_ideal
         )
+        
+        # Nome do arquivo com timestamp para não repetir (infinito 1, 2...)
+        nome_arquivo = f"calculo_venal_{datetime.now().strftime('%d_%m_%Y_%H_%M_%S')}.pdf"
         
         st.download_button(
             label="📄 BAIXAR PDF (TABELA OFICIAL)",
             data=pdf_bytes,
-            file_name=f"calculo_venal_{datetime.now().strftime('%d_%m_%Y_%H_%M_%S')}.pdf",
+            file_name=nome_arquivo,
             mime="application/pdf",
             type="primary"
         )
