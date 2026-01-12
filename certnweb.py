@@ -320,6 +320,9 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.set_font("Arial", 'B', 12)
     pdf.set_line_width(0.5)
     
+    # Filtra construções zeradas para não sujar o PDF
+    construcoes_validas = [c for c in lista_construcoes if c['area'] > 0]
+    
     # Configurações de layout
     margin_top = 20
     col_width = 80
@@ -335,7 +338,7 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     # ===============================================
     y = margin_top
     
-    # Headers (Caixas de cima)
+    # Headers
     pdf.set_xy(start_x, y)
     pdf.cell(col_width, 10, "ÁREA LOTE", border=1, align='C')
     pdf.set_xy(start_x + col_width + gap, y)
@@ -343,34 +346,29 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.set_xy(start_x + (col_width + gap)*2, y)
     pdf.cell(col_width, 10, "TOTAL", border=1, align='C')
     
-    # Values (Caixas de baixo)
+    # Values
     y += 12
     pdf.set_font("Arial", 'B', 14)
     
-    # --- PRIMEIRA CAIXA (ÁREA LOTE + FRAÇÃO IDEAL) ---
+    # Caixa 1 (Lote + FI)
     pdf.set_xy(start_x, y)
-    
-    # Prepara os textos
     area_lote_fmt = f"{area_lote:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.')
     fi_fmt = f"F.I: {fracao_ideal:.4f}".replace(',', '_').replace('.', ',').replace('_', '.')
-    conteudo_caixa_1 = f"{area_lote_fmt}\n{fi_fmt}"
+    pdf.multi_cell(col_width, 10, f"{area_lote_fmt}\n{fi_fmt}", border=1, align='C')
     
-    # Usa MultiCell para permitir duas linhas dentro da caixa
-    pdf.multi_cell(col_width, 10, conteudo_caixa_1, border=1, align='C')
+    # Salva Y para alinhar próximas caixas
+    y_fixed = y 
     
-    # Salva Y após multicell
-    y_fixed = y # Y base para as outras células da linha
-    
-    # --- SEGUNDA CAIXA (VALOR M2) ---
+    # Caixa 2 (Valor)
     pdf.set_xy(start_x + col_width + gap, y_fixed)
     pdf.cell(col_width, 20, f"{valor_m2_lote:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
     
-    # --- TERCEIRA CAIXA (TOTAL) ---
+    # Caixa 3 (Total Lote)
     pdf.set_xy(start_x + (col_width + gap)*2, y_fixed)
     pdf.cell(col_width, 20, f"{total_lote:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
     # ===============================================
-    # 2. LINHA 2 - CONSTRUÇÃO (AGORA DETALHADA)
+    # 2. LINHA 2 - CONSTRUÇÃO (AGORA LINHA POR LINHA)
     # ===============================================
     y = y_fixed + 25
     pdf.set_font("Arial", 'B', 12)
@@ -383,79 +381,59 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.set_xy(start_x + (col_width + gap)*2, y)
     pdf.cell(col_width, 10, "TOTAL", border=1, align='C')
     
-    y += 12
-    pdf.set_font("Arial", 'B', 12) # Fonte um pouco menor se tiver muitos itens
+    y += 10 # Desce para começar os itens
+    pdf.set_font("Arial", 'B', 12)
     
-    # Prepara o conteúdo das 3 colunas (multilinhas)
-    # Se não houver construção, exibe zerado
-    if not lista_construcoes:
-        linhas_area = "0,0000 M2"
-        linhas_valor = "R$ 0,00"
-        linhas_total = "R$ 0,00"
-        num_linhas = 1
+    if not construcoes_validas:
+        # Se não tiver nada, imprime uma linha zerada padrão
+        pdf.set_xy(start_x, y)
+        pdf.cell(col_width, 10, "0,0000 M2", border=1, align='C')
+        pdf.set_xy(start_x + col_width + gap, y)
+        pdf.cell(col_width, 10, "R$ 0,00", border=1, align='C')
+        pdf.set_xy(start_x + (col_width + gap)*2, y)
+        pdf.cell(col_width, 10, "R$ 0,00", border=1, align='C')
+        y += 10
     else:
-        lista_areas = []
-        lista_valores = []
-        lista_totais = []
-        
-        for i, item in enumerate(lista_construcoes):
-            # Formata a linha de área: "Edif. 1: 100,00 M2"
-            str_area = f"Edif. {i+1}: {item['area']:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.')
-            lista_areas.append(str_area)
+        # Loop para imprimir LINHA A LINHA (Garante alinhamento perfeito)
+        for i, item in enumerate(construcoes_validas):
+            altura_linha = 10
             
-            # Formata a linha de valor unitário
-            str_val = f"R$ {item['valor_m2']:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.')
-            lista_valores.append(str_val)
+            # Coluna 1
+            pdf.set_xy(start_x, y)
+            txt_area = f"Edif. {i+1}: {item['area']:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.')
+            pdf.cell(col_width, altura_linha, txt_area, border=1, align='C')
             
-            # Formata a linha de total
-            str_tot = f"R$ {item['total']:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.')
-            lista_totais.append(str_tot)
+            # Coluna 2
+            pdf.set_xy(start_x + col_width + gap, y)
+            txt_val = f"R$ {item['valor_m2']:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.')
+            pdf.cell(col_width, altura_linha, txt_val, border=1, align='C')
             
-        linhas_area = "\n".join(lista_areas)
-        linhas_valor = "\n".join(lista_valores)
-        linhas_total = "\n".join(lista_totais)
-        num_linhas = len(lista_construcoes)
-
-    # Altura da caixa depende do número de linhas (mínimo 20mm, aumenta 8mm por linha extra)
-    altura_caixa = max(20, num_linhas * 10)
-    
-    # COLUNA 1: Áreas
-    pdf.set_xy(start_x, y)
-    pdf.multi_cell(col_width, 10, linhas_area, border=1, align='C')
-    
-    # COLUNA 2: Valores Unitários
-    pdf.set_xy(start_x + col_width + gap, y)
-    pdf.multi_cell(col_width, 10, linhas_valor, border=1, align='C')
-    
-    # COLUNA 3: Totais
-    pdf.set_xy(start_x + (col_width + gap)*2, y)
-    pdf.multi_cell(col_width, 10, linhas_total, border=1, align='C')
+            # Coluna 3
+            pdf.set_xy(start_x + (col_width + gap)*2, y)
+            txt_total = f"R$ {item['total']:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.')
+            pdf.cell(col_width, altura_linha, txt_total, border=1, align='C')
+            
+            y += altura_linha
 
     # ===============================================
-    # 3. DETALHES E TOTAL GERAL
+    # 3. DETALHES E RODAPÉ
     # ===============================================
-    # Pega o Y final da maior caixa (todas têm a mesma altura calculada)
-    y += altura_caixa + 5
-    
-    # Detalhes pequenos abaixo (Bairro e Descrição Completa dos Tipos)
+    y += 5
     pdf.set_font("Arial", '', 8)
     pdf.set_xy(start_x, y)
     
-    # Monta lista detalhada de edificações para o rodapé
+    # Legenda
     lista_descricoes = ""
-    for i, c in enumerate(lista_construcoes):
+    for i, c in enumerate(construcoes_validas):
         desc_curta = (c['tipo'][:90] + '...') if len(c['tipo']) > 90 else c['tipo']
         lista_descricoes += f"Edif. {i+1} = {desc_curta}\n"
     
     bairro_resumo = (bairro[:90] + '...') if len(bairro) > 90 else bairro
+    info_text = f"Bairro: {bairro_resumo}\nLegenda Edificações:\n{lista_descricoes}"
     
-    info_text = (
-        f"Bairro: {bairro_resumo}\n"
-        f"Legenda Edificações:\n{lista_descricoes}"
-    )
-    
+    # Imprime legenda
     pdf.multi_cell(col_width * 3, 4, info_text, align='L')
-
+    
     # Total Extenso
     y = pdf.get_y() + 5
     pdf.set_font("Arial", 'B', 10)
@@ -463,43 +441,24 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     texto_final = f"TOTAL DA AVALIAÇÃO: R$ {total_final:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.') + f" ({extenso})"
     pdf.multi_cell(250, 6, texto_final, align='L')
     
-    # Rodapé
-    y += 15
-    pdf.set_font("Arial", 'B', 10)
+    # Assinatura do Decreto
+    y = pdf.get_y() + 10
     pdf.set_xy(start_x + 100, y)
     pdf.cell(100, 10, "VALORES CONFORME DECRETO Nº 1.849/2025", align='R')
     
     return pdf.output(dest='S').encode('latin-1')
 
 # ==============================================================================
-# CSS PARA ESCONDER BOTÕES +/- E DESIGN LIMPO
+# CSS E ESTILOS
 # ==============================================================================
 st.markdown("""
     <style>
-    /* Remove setas de número */
     input[type=number]::-webkit-inner-spin-button, 
-    input[type=number]::-webkit-outer-spin-button { 
-        -webkit-appearance: none; 
-        margin: 0; 
-    }
-    input[type=number] {
-        -moz-appearance: textfield;
-    }
-    /* Estilo Clean */
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
     .stApp { background-color: white; color: black; }
     h1, h2, h3, label { color: black !important; font-family: Arial, sans-serif; }
-    .stSelectbox div[data-baseweb="select"] > div {
-        white-space: normal;
-        height: auto;
-        min-height: 38px;
-    }
-    .discrete-value {
-        font-size: 0.85rem;
-        color: #666;
-        font-style: italic;
-        margin-top: -10px;
-        margin-bottom: 10px;
-    }
+    .stSelectbox div[data-baseweb="select"] > div { white-space: normal; height: auto; min-height: 38px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -519,15 +478,13 @@ with col1:
     valor_m2_terreno = VALORES_BAIRRO[bairro_selecionado]
     st.caption(f"Valor Base: {formatar_moeda(valor_m2_terreno)} / m²")
     
-    # Campo de Área com 4 casas decimais e step fino
     area_lote = st.number_input("Área do Lote (m²)", min_value=0.0, format="%.4f", step=0.0001)
-    
     fracao_ideal = st.number_input("Fração Ideal", min_value=0.0, value=1.0, format="%.4f", step=0.0001)
 
     st.write("")
     st.write("")
 
-    # --- LISTA DE EDIFICAÇÕES ---
+    # LISTA DE EDIFICAÇÕES
     st.subheader("2. Edificações")
     
     if 'imoveis' not in st.session_state:
@@ -538,40 +495,20 @@ with col1:
     for i, item in enumerate(st.session_state.imoveis):
         st.markdown(f"**Item {i+1}**")
         
-        # Tipo
         idx_tipo = 0
         if item['tipo'] in opcoes_construcao:
             idx_tipo = opcoes_construcao.index(item['tipo'])
             
-        new_tipo = st.selectbox(
-            f"Tipo - Item {i+1}", 
-            options=opcoes_construcao, 
-            key=f"tipo_{i}", 
-            index=idx_tipo,
-            label_visibility="collapsed"
-        )
-        
-        # Exibe valor base discreto
+        new_tipo = st.selectbox(f"Tipo - Item {i+1}", options=opcoes_construcao, key=f"tipo_{i}", index=idx_tipo)
         v_base = VALORES_EDIFICACAO[new_tipo]
         st.caption(f"Valor Base: {formatar_moeda(v_base)} / m²")
 
-        # Área
-        new_area = st.number_input(
-            f"Área (m²) - Item {i+1}", 
-            min_value=0.0, 
-            format="%.4f", 
-            step=0.0001,
-            key=f"area_{i}", 
-            value=item['area'], 
-            label_visibility="collapsed"
-        )
+        new_area = st.number_input(f"Área (m²) - Item {i+1}", min_value=0.0, format="%.4f", step=0.0001, key=f"area_{i}", value=item['area'])
         
-        # Atualiza sessão
         st.session_state.imoveis[i]['tipo'] = new_tipo
         st.session_state.imoveis[i]['area'] = new_area
         st.markdown("---")
 
-    # Botões de controle
     cb1, cb2 = st.columns(2)
     if cb1.button("➕ Adicionar Edificação", use_container_width=True):
         st.session_state.imoveis.append({"area": 0.0, "tipo": opcoes_construcao[0]})
@@ -584,10 +521,8 @@ with col1:
 with col2:
     st.subheader("Resultado")
     
-    # 1. Cálculo Terreno (Precisão Total)
     total_terreno = area_lote * fracao_ideal * valor_m2_terreno
     
-    # 2. Cálculo Construções (Lista)
     lista_final_construcoes = []
     total_constr_geral = 0.0
     
@@ -603,43 +538,35 @@ with col2:
             "total": total_item
         })
     
-    # Soma Final
     total_final = total_terreno + total_constr_geral
-    
-    # Arredondamento final apenas para exibição e extenso
     total_final_rounded = round(total_final, 2)
     extenso = numero_por_extenso(total_final_rounded)
     
-    # Exibição Tela
     st.markdown(f"**Valor Terreno:** {formatar_moeda(total_terreno)}")
-    
     st.markdown("**Detalhamento Construções:**")
     for c in lista_final_construcoes:
         if c['area'] > 0:
             st.text(f"- {c['area']:.4f}m² x {formatar_moeda(c['valor_m2'])} = {formatar_moeda(c['total'])}")
             
     st.markdown(f"**Total Construção:** {formatar_moeda(total_constr_geral)}")
-    
     st.divider()
     st.markdown(f"### TOTAL: {formatar_moeda(total_final_rounded)}")
     st.caption(f"({extenso})")
     
     st.write("")
     
-    # GERAÇÃO DO PDF
     if total_final > 0:
         pdf_bytes = create_pdf(
-            area_lote, # Passa a área bruta do lote
+            area_lote, 
             valor_m2_terreno, 
             total_terreno,
-            lista_final_construcoes, # Passa a lista completa de edificações
+            lista_final_construcoes, 
             total_final_rounded,
             extenso,
             bairro_selecionado,
             fracao_ideal
         )
         
-        # Nome do arquivo com timestamp para não repetir (infinito 1, 2...)
         nome_arquivo = f"calculo_venal_{datetime.now().strftime('%d_%m_%Y_%H_%M_%S')}.pdf"
         
         st.download_button(
