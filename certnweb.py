@@ -320,20 +320,9 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.set_font("Arial", 'B', 12)
     pdf.set_line_width(0.5)
     
-    # Cálculos agregados para a Tabela
-    total_area_constr = sum(c['area'] for c in lista_construcoes)
-    total_valor_constr = sum(c['total'] for c in lista_construcoes)
-    
-    # Cálculo da "Média Ponderada" para exibição no PDF (Total R$ / Total Área)
-    # Isso garante que a tabela fique visualmente coerente: Área * Valor_Médio = Total
-    valor_m2_constr_medio = 0.0
-    if total_area_constr > 0:
-        valor_m2_constr_medio = total_valor_constr / total_area_constr
-
     # Configurações de layout
     margin_top = 20
     col_width = 80
-    row_height = 25
     gap = 2
     start_x = 20
     
@@ -341,7 +330,9 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.set_xy(start_x, 10)
     pdf.cell(0, 10, datetime.now().strftime("%d/%m/%Y"), align='C')
 
+    # ===============================================
     # 1. LINHA 1 - LOTE
+    # ===============================================
     y = margin_top
     
     # Headers (Caixas de cima)
@@ -368,9 +359,7 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.multi_cell(col_width, 10, conteudo_caixa_1, border=1, align='C')
     
     # Salva Y após multicell
-    y_current = pdf.get_y()
-    # Volta o Y para a linha das outras caixas
-    y_fixed = y
+    y_fixed = y # Y base para as outras células da linha
     
     # --- SEGUNDA CAIXA (VALOR M2) ---
     pdf.set_xy(start_x + col_width + gap, y_fixed)
@@ -380,7 +369,9 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.set_xy(start_x + (col_width + gap)*2, y_fixed)
     pdf.cell(col_width, 20, f"{total_lote:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
-    # 2. LINHA 2 - CONSTRUÇÃO
+    # ===============================================
+    # 2. LINHA 2 - CONSTRUÇÃO (AGORA DETALHADA)
+    # ===============================================
     y = y_fixed + 25
     pdf.set_font("Arial", 'B', 12)
     
@@ -392,51 +383,87 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.set_xy(start_x + (col_width + gap)*2, y)
     pdf.cell(col_width, 10, "TOTAL", border=1, align='C')
     
-    # Values
     y += 12
-    pdf.set_font("Arial", 'B', 14)
-    pdf.set_xy(start_x, y)
+    pdf.set_font("Arial", 'B', 12) # Fonte um pouco menor se tiver muitos itens
     
-    # Área Total Construída
-    pdf.cell(col_width, 20, f"{total_area_constr:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
-    
-    # Valor Médio (Para exibição apenas)
-    # Se for apenas 1 item, mostra o valor exato. Se forem vários, mostra a média ponderada.
-    pdf.set_xy(start_x + col_width + gap, y)
-    pdf.cell(col_width, 20, f"{valor_m2_constr_medio:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
-    
-    # Valor Total Construção
-    pdf.set_xy(start_x + (col_width + gap)*2, y)
-    pdf.cell(col_width, 20, f"{total_valor_constr:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
+    # Prepara o conteúdo das 3 colunas (multilinhas)
+    # Se não houver construção, exibe zerado
+    if not lista_construcoes:
+        linhas_area = "0,0000 M2"
+        linhas_valor = "R$ 0,00"
+        linhas_total = "R$ 0,00"
+        num_linhas = 1
+    else:
+        lista_areas = []
+        lista_valores = []
+        lista_totais = []
+        
+        for i, item in enumerate(lista_construcoes):
+            # Formata a linha de área: "Edif. 1: 100,00 M2"
+            str_area = f"Edif. {i+1}: {item['area']:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.')
+            lista_areas.append(str_area)
+            
+            # Formata a linha de valor unitário
+            str_val = f"R$ {item['valor_m2']:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.')
+            lista_valores.append(str_val)
+            
+            # Formata a linha de total
+            str_tot = f"R$ {item['total']:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.')
+            lista_totais.append(str_tot)
+            
+        linhas_area = "\n".join(lista_areas)
+        linhas_valor = "\n".join(lista_valores)
+        linhas_total = "\n".join(lista_totais)
+        num_linhas = len(lista_construcoes)
 
-    # Detalhes pequenos abaixo (Bairro e Tipos)
-    y += 30 
+    # Altura da caixa depende do número de linhas (mínimo 20mm, aumenta 8mm por linha extra)
+    altura_caixa = max(20, num_linhas * 10)
+    
+    # COLUNA 1: Áreas
+    pdf.set_xy(start_x, y)
+    pdf.multi_cell(col_width, 10, linhas_area, border=1, align='C')
+    
+    # COLUNA 2: Valores Unitários
+    pdf.set_xy(start_x + col_width + gap, y)
+    pdf.multi_cell(col_width, 10, linhas_valor, border=1, align='C')
+    
+    # COLUNA 3: Totais
+    pdf.set_xy(start_x + (col_width + gap)*2, y)
+    pdf.multi_cell(col_width, 10, linhas_total, border=1, align='C')
+
+    # ===============================================
+    # 3. DETALHES E TOTAL GERAL
+    # ===============================================
+    # Pega o Y final da maior caixa (todas têm a mesma altura calculada)
+    y += altura_caixa + 5
+    
+    # Detalhes pequenos abaixo (Bairro e Descrição Completa dos Tipos)
     pdf.set_font("Arial", '', 8)
     pdf.set_xy(start_x, y)
     
-    # Monta lista de edificações para o rodapé
+    # Monta lista detalhada de edificações para o rodapé
     lista_descricoes = ""
     for i, c in enumerate(lista_construcoes):
         desc_curta = (c['tipo'][:90] + '...') if len(c['tipo']) > 90 else c['tipo']
-        lista_descricoes += f"{i+1}. {desc_curta} ({c['area']:.2f}m²)\n"
+        lista_descricoes += f"Edif. {i+1} = {desc_curta}\n"
     
     bairro_resumo = (bairro[:90] + '...') if len(bairro) > 90 else bairro
     
     info_text = (
         f"Bairro: {bairro_resumo}\n"
-        f"Edificações:\n{lista_descricoes}"
+        f"Legenda Edificações:\n{lista_descricoes}"
     )
     
     pdf.multi_cell(col_width * 3, 4, info_text, align='L')
 
-    # 3. TOTAL E EXTENSO
+    # Total Extenso
     y = pdf.get_y() + 5
     pdf.set_font("Arial", 'B', 10)
     pdf.set_xy(start_x, y)
     texto_final = f"TOTAL DA AVALIAÇÃO: R$ {total_final:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.') + f" ({extenso})"
     pdf.multi_cell(250, 6, texto_final, align='L')
     
-    # 4. RODAPÉ
+    # Rodapé
     y += 15
     pdf.set_font("Arial", 'B', 10)
     pdf.set_xy(start_x + 100, y)
@@ -589,7 +616,7 @@ with col2:
     st.markdown("**Detalhamento Construções:**")
     for c in lista_final_construcoes:
         if c['area'] > 0:
-            st.text(f"- {c['area']:.2f}m² x {formatar_moeda(c['valor_m2'])} = {formatar_moeda(c['total'])}")
+            st.text(f"- {c['area']:.4f}m² x {formatar_moeda(c['valor_m2'])} = {formatar_moeda(c['total'])}")
             
     st.markdown(f"**Total Construção:** {formatar_moeda(total_constr_geral)}")
     
