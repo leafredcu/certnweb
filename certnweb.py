@@ -153,8 +153,8 @@ VALORES_BAIRRO = {
     "Jardim Planalto: Todas": 340.00,
     "Jardim Santa Rosa: Parte da quadra 12 e parte da 35 com frente para rua 16; 13; 14; 15; 16; 17; 18; 19; 20; 22; 32; 33; 36; e 41; parte da área institucional 03": 500.00,
     "Jardim Santa Rosa: Parte das quadras 21, 20, 19, 18, parte da área institucional 03; parte das quadras 12, 35 e 36; quadras 05, 06, 07, 08, 09, 10, 11; parte da quadra 04; parte da quadra 33; quadra 24; 32; 44; 37; 38; 39; parte das quadras 40, 45 e 46; parte das quadras 23 e 03; quadras 01 e 02": 700.00,
-    "Jardim Santa Rosa: Parte das quadras 40, 45 e 46 com frente para MG-040; parte das quadras 23 e 03 com frente para a MG-040": 1650.00,
-    "Jardim Santa Rosa: Parte das quadras 04 e 33; quadra 25, 26 e 43; quadra 27; parte das quadras 28, 29 e 30": 1000.00,
+    "Jardim Santa Rosa: Parte das quadras 40, 45 e 46 com frente para MG-040; parte das quadras 23 e 03 com frente para a MG-040": 1000.00,
+    "Jardim Santa Rosa: Parte das quadras 04 e 33; quadra 25, 26 e 43; quadra 27; parte das quadras 28, 29 e 30": 1650.00,
     "Jardim Vera Cruz: Quadras 01; 02; 03; 04; 05; 06; 07; 08; 09; 10; Parte das quadras 11 e 12": 500.00,
     "Jardim Vera Cruz: Quadra 13": 340.00,
     "Jardim Vera Cruz - Fundos e Vila: Parte das quadras 11 e 12; fundos": 200.00,
@@ -573,3 +573,4 @@ with col2:
             mime="application/pdf",
             type="primary"
         )
+
