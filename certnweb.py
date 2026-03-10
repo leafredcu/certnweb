@@ -12,7 +12,7 @@ st.set_page_config(page_title="Cálculo Valor Venal 2025", layout="wide")
 # DADOS EXATOS DO DECRETO Nº 1.849/2025
 # ==============================================================================
 
-# ANEXO III - EDIFICAÇÕES (Mantido igual)
+# ANEXO III - EDIFICAÇÕES
 VALORES_EDIFICACAO = {
     # PADRÃO BAIXO
     "R-1 - Residencial unifamiliar - PADRÃO BAIXO - Novo": 2369.59,
@@ -117,7 +117,7 @@ VALORES_EDIFICACAO = {
     "SEM CONSTRUÇÃO (Lote Vago)": 0.0
 }
 
-# ANEXO I - TERRENOS (Mantido igual)
+# ANEXO I - TERRENOS
 VALORES_BAIRRO = {
     "Aleixa Ferreira: 01; 02; 03; 04; 05; 06; 07; 08; 09; 10; 11; 12; 13 e 14": 550.00,
     "Brasília - Região Antenas: Parte das quadras 15 e 16 com frente para rua Pedro Pinheiro": 200.00,
@@ -153,8 +153,8 @@ VALORES_BAIRRO = {
     "Jardim Planalto: Todas": 340.00,
     "Jardim Santa Rosa: Parte da quadra 12 e parte da 35 com frente para rua 16; 13; 14; 15; 16; 17; 18; 19; 20; 22; 32; 33; 36; e 41; parte da área institucional 03": 500.00,
     "Jardim Santa Rosa: Parte das quadras 21, 20, 19, 18, parte da área institucional 03; parte das quadras 12, 35 e 36; quadras 05, 06, 07, 08, 09, 10, 11; parte da quadra 04; parte da quadra 33; quadra 24; 32; 44; 37; 38; 39; parte das quadras 40, 45 e 46; parte das quadras 23 e 03; quadras 01 e 02": 700.00,
-    "Jardim Santa Rosa: Parte das quadras 40, 45 e 46 com frente para MG-040; parte das quadras 23 e 03 com frente para a MG-040": 1000.00,
-    "Jardim Santa Rosa: Parte das quadras 04 e 33; quadra 25, 26 e 43; quadra 27; parte das quadras 28, 29 e 30": 1650.00,
+    "Jardim Santa Rosa: Parte das quadras 40, 45 e 46 com frente para MG-040; parte das quadras 23 e 03 com frente para a MG-040": 1650.00,
+    "Jardim Santa Rosa: Parte das quadras 04 e 33; quadra 25, 26 e 43; quadra 27; parte das quadras 28, 29 e 30": 1000.00,
     "Jardim Vera Cruz: Quadras 01; 02; 03; 04; 05; 06; 07; 08; 09; 10; Parte das quadras 11 e 12": 500.00,
     "Jardim Vera Cruz: Quadra 13": 340.00,
     "Jardim Vera Cruz - Fundos e Vila: Parte das quadras 11 e 12; fundos": 200.00,
@@ -243,9 +243,11 @@ def numero_por_extenso(n):
         if num == 100: return "CEM"
         s = ""
         c, d, u = (num // 100), (num % 100 // 10), (num % 10)
+        
         if c > 0:
             s += centenas[c]
             if d > 0 or u > 0: s += " E "
+        
         if d == 1:
             s += dezespeciais[u]
         elif d > 1:
@@ -259,27 +261,34 @@ def numero_por_extenso(n):
     inteiro = int(n)
     centavos = int(round((n - inteiro) * 100))
     parts = []
+    
     bilhao = (inteiro // 1000000000) % 1000
     if bilhao > 0: parts.append(f"{convert_group(bilhao)} {'BILHÃO' if bilhao == 1 else 'BILHÕES'}")
+    
     milhao = (inteiro // 1000000) % 1000
     if milhao > 0: parts.append(f"{convert_group(milhao)} {'MILHÃO' if milhao == 1 else 'MILHÕES'}")
+    
     mil = (inteiro // 1000) % 1000
     if mil > 0:
         if mil == 1: parts.append("MIL")
         else: parts.append(f"{convert_group(mil)} MIL")
+    
     resto = inteiro % 1000
     if resto > 0: parts.append(f"{convert_group(resto)}")
+    
     texto_reais = ", ".join(parts).replace(", ", " E " if len(parts)==2 else ", ", 1)
     if not texto_reais: texto_reais = "ZERO"
     texto_reais += " REAL" if inteiro == 1 else " REAIS"
+    
     texto_centavos = ""
     if centavos > 0:
         texto_centavos = f" E {convert_group(centavos)}"
         texto_centavos += " CENTAVO" if centavos == 1 else " CENTAVOS"
+        
     return (texto_reais + texto_centavos).upper()
 
 # ==============================================================================
-# CLASSE PARA GERAR PDF (ESTILO TABELA FLUIDA)
+# CLASSE PARA GERAR PDF (ESTILO TABELA ALINHADA)
 # ==============================================================================
 class PDF(FPDF):
     def rounded_rect(self, x, y, w, h, r, style=''):
@@ -311,10 +320,9 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.set_font("Arial", 'B', 12)
     pdf.set_line_width(0.5)
     
-    # Filtra construções zeradas para não sujar o PDF
+    # Filtra construções zeradas (CORREÇÃO DO ITEM VAZIO)
     construcoes_validas = [c for c in lista_construcoes if c['area'] > 0]
     
-    # Configurações de layout
     col_width = 80
     gap = 2
     start_x = 20
@@ -328,12 +336,12 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
         pdf.cell(col_width, 10, "TOTAL", border=1, align='C')
         return y_pos + 10
 
-    # DATA NO TOPO
+    # DATA
     pdf.set_xy(start_x, 10)
     pdf.cell(0, 10, datetime.now().strftime("%d/%m/%Y"), align='C')
 
     # ===============================================
-    # 1. LINHA 1 - LOTE (Fixa)
+    # 1. LINHA 1 - LOTE
     # ===============================================
     y = 20
     pdf.set_font("Arial", 'B', 12)
@@ -347,28 +355,29 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     y += 12
     pdf.set_font("Arial", 'B', 14)
     
-    # Caixa 1 (Lote + FI)
+    # Lote + FI
     pdf.set_xy(start_x, y)
     area_lote_fmt = f"{area_lote:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.')
     fi_fmt = f"F.I: {fracao_ideal:.4f}".replace(',', '_').replace('.', ',').replace('_', '.')
+    # Usa MultiCell aqui porque são 2 linhas
     pdf.multi_cell(col_width, 10, f"{area_lote_fmt}\n{fi_fmt}", border=1, align='C')
     
-    y_fixed = y # Y base
+    y_fixed = y 
     
-    # Caixa 2 (Valor)
+    # Valor M2
     pdf.set_xy(start_x + col_width + gap, y_fixed)
     pdf.cell(col_width, 20, f"{valor_m2_lote:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
     
-    # Caixa 3 (Total Lote)
+    # Total
     pdf.set_xy(start_x + (col_width + gap)*2, y_fixed)
     pdf.cell(col_width, 20, f"{total_lote:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.'), border=1, align='C')
 
     # ===============================================
-    # 2. CONSTRUÇÃO (Linha por linha com paginação)
+    # 2. CONSTRUÇÃO (CORREÇÃO DE ALINHAMENTO E PAGINAÇÃO)
     # ===============================================
     y = y_fixed + 25
     pdf.set_font("Arial", 'B', 12)
-    y = draw_headers(y) # Desenha cabeçalho e avança Y
+    y = draw_headers(y) # Desenha cabeçalho
     
     pdf.set_font("Arial", 'B', 12)
     
@@ -382,18 +391,18 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
         y += 10
     else:
         for i, item in enumerate(construcoes_validas):
-            # Verifica se cabe na página (limite ~180mm para paisagem com margem)
+            # Se não couber na página, cria nova
             if y > 160: 
                 pdf.add_page()
-                y = 20 # Reseta Y
-                y = draw_headers(y) # Redesenha cabeçalho
+                y = 20
+                y = draw_headers(y)
             
-            # Dados da linha
+            # Formata dados
             txt_area = f"Edif. {i+1}: {item['area']:,.4f} M2".replace(',', '_').replace('.', ',').replace('_', '.')
             txt_val = f"R$ {item['valor_m2']:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.')
             txt_total = f"R$ {item['total']:,.4f}".replace(',', '_').replace('.', ',').replace('_', '.')
             
-            # Desenha células da linha (sem MultiCell para garantir alinhamento horizontal)
+            # Desenha células ALINHADAS (usando cell, não multi_cell)
             pdf.set_xy(start_x, y)
             pdf.cell(col_width, 10, txt_area, border=1, align='C')
             
@@ -406,9 +415,9 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
             y += 10
 
     # ===============================================
-    # 3. RODAPÉ E TOTAL (Com verificação de página)
+    # 3. RODAPÉ
     # ===============================================
-    if y > 140: # Se estiver muito no fim, nova página para o rodapé
+    if y > 140:
         pdf.add_page()
         y = 20
         
@@ -416,7 +425,7 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.set_font("Arial", '', 8)
     pdf.set_xy(start_x, y)
     
-    # Legenda
+    # Legenda detalhada
     lista_descricoes = ""
     for i, c in enumerate(construcoes_validas):
         desc_curta = (c['tipo'][:90] + '...') if len(c['tipo']) > 90 else c['tipo']
@@ -427,9 +436,8 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     
     pdf.multi_cell(col_width * 3, 4, info_text, align='L')
     
-    # Total
+    # Total Extenso
     y = pdf.get_y() + 5
-    # Verifica quebra novamente após a legenda
     if y > 170:
         pdf.add_page()
         y = 20
@@ -443,7 +451,8 @@ def create_pdf(area_lote, valor_m2_lote, total_lote, lista_construcoes, total_fi
     pdf.set_xy(start_x + 100, y)
     pdf.cell(100, 10, "VALORES CONFORME DECRETO Nº 1.849/2025", align='R')
     
-    return pdf.output(dest='S').encode('latin-1')
+    # PROTEÇÃO CONTRA ERRO DE CARACTERE (Codificação segura)
+    return pdf.output(dest='S').encode('latin-1', 'replace')
 
 # ==============================================================================
 # CSS
@@ -481,7 +490,6 @@ with col1:
     st.write("")
     st.write("")
 
-    # LISTA DE EDIFICAÇÕES
     st.subheader("2. Edificações")
     
     if 'imoveis' not in st.session_state:
@@ -573,4 +581,3 @@ with col2:
             mime="application/pdf",
             type="primary"
         )
-
